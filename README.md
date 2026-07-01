@@ -274,15 +274,21 @@ https://algorithm-visualizer-performance-an.vercel.app/
 
 > Add screenshots before publishing.
 
-| Home | Sorting Visualizer |
-|------|--------------------|
-| Home Page | Sorting Page |
+# Home Page
 
-| Graph Visualizer | Quiz |
-|-----------------|------|
-| Graph Page | Quiz Page |
+![Home Page](screenshots/home.png)
 
----
+# Sorting Visualizer
+
+![Sorting](screenshots/sorting.png)
+
+# Graph Visualizer
+
+![Graph](screenshots/graph.png)
+
+# Quiz 
+
+![Quiz](screenshots/quiz.png)
 
 # 💡 Future Improvements
 
