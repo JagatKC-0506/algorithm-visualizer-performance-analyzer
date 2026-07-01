@@ -28,7 +28,7 @@ export default function ComplexityExplanation({ details }: Props) {
               textTransform: 'capitalize',
             }}
           >
-            {c.replace('-', ' ')} Case: {detail.notation}
+            {c.replace('-', ' ')} Case: {details.find(d => d.case === c)?.notation || ''}
           </button>
         ))}
       </div>
