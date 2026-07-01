@@ -276,7 +276,7 @@ https://algorithm-visualizer-performance-an.vercel.app/
 
 # Home Page
 
-![Home Page](screenshots/home.png)
+![Home Page](screenshots/Home.png)
 
 # Sorting Visualizer
 
