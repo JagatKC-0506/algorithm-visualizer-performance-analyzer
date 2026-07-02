@@ -5,14 +5,13 @@ interface PQEntry {
   dist: number;
 }
 
-export function dijkstraSteps(graph: GraphData, start: number): GraphStep[] {
+export function dijkstraSteps(graph: GraphData, start: number, destination?: number): GraphStep[] {
   const steps: GraphStep[] = [];
   const distances = new Map<number, number>();
   const parent = new Map<number, number | null>();
   const visited = new Set<number>();
   const visitedNodes: number[] = [];
   const exploredEdges: { from: number; to: number }[] = [];
-  const pathEdges: { from: number; to: number }[] = [];
   const pq: PQEntry[] = [];
 
   for (const node of graph.nodes) {
@@ -55,6 +54,28 @@ export function dijkstraSteps(graph: GraphData, start: number): GraphStep[] {
       description: `Extracted node ${node} from priority queue with distance ${dist}`,
     });
 
+    if (destination !== undefined && node === destination) {
+      const path: { from: number; to: number }[] = [];
+      let cur = node;
+      while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+        const p = parent.get(cur)!;
+        path.unshift({ from: p, to: cur });
+        cur = p;
+      }
+      steps.push({
+        visitedNodes: [...visitedNodes],
+        currentNode: -1,
+        queue: [],
+        stack: [],
+        priorityQueue: [],
+        exploredEdges: [...exploredEdges],
+        pathEdges: path,
+        distances: new Map(distances),
+        description: `Dijkstra complete! Shortest path from ${start} to ${destination}: distance=${dist}, path: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+      });
+      return steps;
+    }
+
     const neighbors = graph.adjacencyList.get(node) || [];
     for (const { to, weight } of neighbors) {
       if (visited.has(to)) continue;
@@ -79,14 +100,19 @@ export function dijkstraSteps(graph: GraphData, start: number): GraphStep[] {
     }
   }
 
-  const endNodes = Array.from(distances.entries())
-    .filter(([id, d]) => d > 0 && d < Infinity);
-  if (endNodes.length > 0) {
-    let target = endNodes[endNodes.length - 1][0];
-    while (parent.get(target) !== null && parent.get(target) !== undefined) {
-      const p = parent.get(target)!;
-      pathEdges.unshift({ from: p, to: target });
-      target = p;
+  const finalPathEdges: { from: number; to: number }[] = [];
+  let target: number | undefined = destination;
+  if (target === undefined || !distances.has(target) || distances.get(target) === Infinity) {
+    const endNodesArr = Array.from(distances.entries())
+      .filter(([id, d]) => d > 0 && d < Infinity);
+    target = endNodesArr.length > 0 ? endNodesArr[endNodesArr.length - 1][0] : undefined;
+  }
+  if (target !== undefined) {
+    let cur = target;
+    while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+      const p = parent.get(cur)!;
+      finalPathEdges.unshift({ from: p, to: cur });
+      cur = p;
     }
   }
 
@@ -97,9 +123,11 @@ export function dijkstraSteps(graph: GraphData, start: number): GraphStep[] {
     stack: [],
     priorityQueue: [],
     exploredEdges: [...exploredEdges],
-    pathEdges,
+    pathEdges: finalPathEdges,
     distances: new Map(distances),
-    description: 'Dijkstra complete! Shortest paths found.',
+    description: destination
+      ? `Dijkstra complete. Destination ${destination} ${finalPathEdges.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
+      : 'Dijkstra complete! Shortest paths found.',
   });
 
   return steps;

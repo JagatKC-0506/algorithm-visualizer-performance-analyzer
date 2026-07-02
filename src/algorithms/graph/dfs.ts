@@ -1,6 +1,6 @@
 import type { GraphData, GraphStep } from '../../types';
 
-export function dfsSteps(graph: GraphData, start: number): GraphStep[] {
+export function dfsSteps(graph: GraphData, start: number, destination?: number): GraphStep[] {
   const steps: GraphStep[] = [];
   const visited = new Set<number>();
   const stack: number[] = [start];
@@ -41,6 +41,28 @@ export function dfsSteps(graph: GraphData, start: number): GraphStep[] {
       description: `Popped node ${node} from stack, exploring its neighbors`,
     });
 
+    if (destination !== undefined && node === destination) {
+      const path: { from: number; to: number }[] = [];
+      let cur = node;
+      while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+        const p = parent.get(cur)!;
+        path.unshift({ from: p, to: cur });
+        cur = p;
+      }
+      steps.push({
+        visitedNodes: [...visitedNodes],
+        currentNode: -1,
+        queue: [],
+        stack: [...stack],
+        priorityQueue: [],
+        exploredEdges: [...exploredEdges],
+        pathEdges: path,
+        distances: new Map(distances),
+        description: `DFS complete! Path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+      });
+      return steps;
+    }
+
     const neighbors = graph.adjacencyList.get(node) || [];
     for (const { to } of neighbors) {
       if (!visited.has(to)) {
@@ -66,13 +88,17 @@ export function dfsSteps(graph: GraphData, start: number): GraphStep[] {
   }
 
   const finalPath: { from: number; to: number }[] = [];
-  const endNodes = Array.from(distances.entries()).filter(([, d]) => d > 0);
-  if (endNodes.length > 0) {
-    let target = endNodes[endNodes.length - 1][0];
-    while (parent.get(target) !== null && parent.get(target) !== undefined) {
-      const p = parent.get(target)!;
-      finalPath.unshift({ from: p, to: target });
-      target = p;
+  let target: number | undefined = destination;
+  if (target === undefined || !distances.has(target) || distances.get(target) === Infinity) {
+    const endNodesArr = Array.from(distances.entries()).filter(([, d]) => d > 0);
+    target = endNodesArr.length > 0 ? endNodesArr[endNodesArr.length - 1][0] : undefined;
+  }
+  if (target !== undefined) {
+    let cur = target;
+    while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+      const p = parent.get(cur)!;
+      finalPath.unshift({ from: p, to: cur });
+      cur = p;
     }
   }
 
@@ -85,7 +111,9 @@ export function dfsSteps(graph: GraphData, start: number): GraphStep[] {
     exploredEdges: [...exploredEdges],
     pathEdges: finalPath,
     distances: new Map(distances),
-    description: 'DFS complete! All reachable nodes visited.',
+    description: destination
+      ? `DFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
+      : 'DFS complete! All reachable nodes visited.',
   });
 
   return steps;

@@ -68560,7 +68560,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                    }, children: tab.label }, tab.id))) }), jsxRuntimeExports.jsxs("div", { style: { background: 'var(--surface)', borderRadius: '0.75rem', border: '1px solid var(--border)', padding: '1.5rem' }, children: [activeTab === 'explanation' && info && jsxRuntimeExports.jsx(AlgorithmExplanation, { info: info, type: "sorting" }), activeTab === 'complexity' && jsxRuntimeExports.jsx(ComplexityExplanation, { details: complexity }), activeTab === 'visualizer' && jsxRuntimeExports.jsx(SortingVisualizer, { algorithm: selectedAlgo }), activeTab === 'graph' && jsxRuntimeExports.jsx(PerformanceGraph, { algorithm: selectedAlgo }), activeTab === 'comparison' && jsxRuntimeExports.jsx(AlgorithmComparison, {})] })] }));
 	}
 
-	function bfsSteps(graph, start) {
+	function bfsSteps(graph, start, destination) {
 	    const steps = [];
 	    const visited = new Set();
 	    const queue = [start];
@@ -68605,6 +68605,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                parent.set(to, node);
 	                distances.set(to, distances.get(node) + 1);
 	                exploredEdges.push({ from: node, to });
+	                const reachedDest = to === destination;
 	                steps.push({
 	                    visitedNodes: [...visitedNodes],
 	                    currentNode: node,
@@ -68614,19 +68615,46 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                    exploredEdges: [...exploredEdges],
 	                    pathEdges: [],
 	                    distances: new Map(distances),
-	                    description: `Visited neighbor ${to} from node ${node}. Distance: ${distances.get(to)}`,
+	                    description: reachedDest
+	                        ? `Reached destination node ${to}! Distance: ${distances.get(to)}`
+	                        : `Visited neighbor ${to} from node ${node}. Distance: ${distances.get(to)}`,
 	                });
+	                if (destination !== undefined && to === destination) {
+	                    const path = [];
+	                    let cur = to;
+	                    while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+	                        const p = parent.get(cur);
+	                        path.unshift({ from: p, to: cur });
+	                        cur = p;
+	                    }
+	                    steps.push({
+	                        visitedNodes: [...visitedNodes],
+	                        currentNode: -1,
+	                        queue: [...queue],
+	                        stack: [],
+	                        priorityQueue: [],
+	                        exploredEdges: [...exploredEdges],
+	                        pathEdges: path,
+	                        distances: new Map(distances),
+	                        description: `BFS complete! Shortest path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+	                    });
+	                    return steps;
+	                }
 	            }
 	        }
 	    }
 	    const finalPath = [];
-	    const endNodes = Array.from(distances.entries()).filter(([, d]) => d > 0);
-	    if (endNodes.length > 0) {
-	        let target = endNodes[endNodes.length - 1][0];
-	        while (parent.get(target) !== null && parent.get(target) !== undefined) {
-	            const p = parent.get(target);
-	            finalPath.unshift({ from: p, to: target });
-	            target = p;
+	    let target = destination;
+	    if (target === undefined || !distances.has(target) || distances.get(target) === Infinity) {
+	        const endNodesArr = Array.from(distances.entries()).filter(([, d]) => d > 0);
+	        target = endNodesArr.length > 0 ? endNodesArr[endNodesArr.length - 1][0] : undefined;
+	    }
+	    if (target !== undefined) {
+	        let cur = target;
+	        while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+	            const p = parent.get(cur);
+	            finalPath.unshift({ from: p, to: cur });
+	            cur = p;
 	        }
 	    }
 	    steps.push({
@@ -68638,12 +68666,14 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        exploredEdges: [...exploredEdges],
 	        pathEdges: finalPath,
 	        distances: new Map(distances),
-	        description: 'BFS complete! All reachable nodes visited.',
+	        description: destination
+	            ? `BFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
+	            : 'BFS complete! All reachable nodes visited.',
 	    });
 	    return steps;
 	}
 
-	function dfsSteps(graph, start) {
+	function dfsSteps(graph, start, destination) {
 	    const steps = [];
 	    const visited = new Set();
 	    const stack = [start];
@@ -68679,6 +68709,27 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            distances: new Map(distances),
 	            description: `Popped node ${node} from stack, exploring its neighbors`,
 	        });
+	        if (destination !== undefined && node === destination) {
+	            const path = [];
+	            let cur = node;
+	            while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+	                const p = parent.get(cur);
+	                path.unshift({ from: p, to: cur });
+	                cur = p;
+	            }
+	            steps.push({
+	                visitedNodes: [...visitedNodes],
+	                currentNode: -1,
+	                queue: [],
+	                stack: [...stack],
+	                priorityQueue: [],
+	                exploredEdges: [...exploredEdges],
+	                pathEdges: path,
+	                distances: new Map(distances),
+	                description: `DFS complete! Path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+	            });
+	            return steps;
+	        }
 	        const neighbors = graph.adjacencyList.get(node) || [];
 	        for (const { to } of neighbors) {
 	            if (!visited.has(to)) {
@@ -68703,13 +68754,17 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        }
 	    }
 	    const finalPath = [];
-	    const endNodes = Array.from(distances.entries()).filter(([, d]) => d > 0);
-	    if (endNodes.length > 0) {
-	        let target = endNodes[endNodes.length - 1][0];
-	        while (parent.get(target) !== null && parent.get(target) !== undefined) {
-	            const p = parent.get(target);
-	            finalPath.unshift({ from: p, to: target });
-	            target = p;
+	    let target = destination;
+	    if (target === undefined || !distances.has(target) || distances.get(target) === Infinity) {
+	        const endNodesArr = Array.from(distances.entries()).filter(([, d]) => d > 0);
+	        target = endNodesArr.length > 0 ? endNodesArr[endNodesArr.length - 1][0] : undefined;
+	    }
+	    if (target !== undefined) {
+	        let cur = target;
+	        while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+	            const p = parent.get(cur);
+	            finalPath.unshift({ from: p, to: cur });
+	            cur = p;
 	        }
 	    }
 	    steps.push({
@@ -68721,19 +68776,20 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        exploredEdges: [...exploredEdges],
 	        pathEdges: finalPath,
 	        distances: new Map(distances),
-	        description: 'DFS complete! All reachable nodes visited.',
+	        description: destination
+	            ? `DFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
+	            : 'DFS complete! All reachable nodes visited.',
 	    });
 	    return steps;
 	}
 
-	function dijkstraSteps(graph, start) {
+	function dijkstraSteps(graph, start, destination) {
 	    const steps = [];
 	    const distances = new Map();
 	    const parent = new Map();
 	    const visited = new Set();
 	    const visitedNodes = [];
 	    const exploredEdges = [];
-	    const pathEdges = [];
 	    const pq = [];
 	    for (const node of graph.nodes) {
 	        distances.set(node.id, node.id === start ? 0 : Infinity);
@@ -68769,6 +68825,27 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            distances: new Map(distances),
 	            description: `Extracted node ${node} from priority queue with distance ${dist}`,
 	        });
+	        if (destination !== undefined && node === destination) {
+	            const path = [];
+	            let cur = node;
+	            while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+	                const p = parent.get(cur);
+	                path.unshift({ from: p, to: cur });
+	                cur = p;
+	            }
+	            steps.push({
+	                visitedNodes: [...visitedNodes],
+	                currentNode: -1,
+	                queue: [],
+	                stack: [],
+	                priorityQueue: [],
+	                exploredEdges: [...exploredEdges],
+	                pathEdges: path,
+	                distances: new Map(distances),
+	                description: `Dijkstra complete! Shortest path from ${start} to ${destination}: distance=${dist}, path: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+	            });
+	            return steps;
+	        }
 	        const neighbors = graph.adjacencyList.get(node) || [];
 	        for (const { to, weight } of neighbors) {
 	            if (visited.has(to))
@@ -68793,14 +68870,19 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            }
 	        }
 	    }
-	    const endNodes = Array.from(distances.entries())
-	        .filter(([id, d]) => d > 0 && d < Infinity);
-	    if (endNodes.length > 0) {
-	        let target = endNodes[endNodes.length - 1][0];
-	        while (parent.get(target) !== null && parent.get(target) !== undefined) {
-	            const p = parent.get(target);
-	            pathEdges.unshift({ from: p, to: target });
-	            target = p;
+	    const finalPathEdges = [];
+	    let target = destination;
+	    if (target === undefined || !distances.has(target) || distances.get(target) === Infinity) {
+	        const endNodesArr = Array.from(distances.entries())
+	            .filter(([id, d]) => d > 0 && d < Infinity);
+	        target = endNodesArr.length > 0 ? endNodesArr[endNodesArr.length - 1][0] : undefined;
+	    }
+	    if (target !== undefined) {
+	        let cur = target;
+	        while (parent.get(cur) !== null && parent.get(cur) !== undefined) {
+	            const p = parent.get(cur);
+	            finalPathEdges.unshift({ from: p, to: cur });
+	            cur = p;
 	        }
 	    }
 	    steps.push({
@@ -68810,9 +68892,11 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        stack: [],
 	        priorityQueue: [],
 	        exploredEdges: [...exploredEdges],
-	        pathEdges,
+	        pathEdges: finalPathEdges,
 	        distances: new Map(distances),
-	        description: 'Dijkstra complete! Shortest paths found.',
+	        description: destination
+	            ? `Dijkstra complete. Destination ${destination} ${finalPathEdges.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
+	            : 'Dijkstra complete! Shortest paths found.',
 	    });
 	    return steps;
 	}
@@ -68913,6 +68997,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	function GraphVisualizer({ algorithm }) {
 	    const [numNodes, setNumNodes] = reactExports.useState(8);
 	    const [startNode, setStartNode] = reactExports.useState(0);
+	    const [destNode, setDestNode] = reactExports.useState(numNodes - 1);
 	    const [graph, setGraph] = reactExports.useState(null);
 	    const [steps, setSteps] = reactExports.useState([]);
 	    const [currentStep, setCurrentStep] = reactExports.useState(0);
@@ -68923,11 +69008,14 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    const generateNewGraph = reactExports.useCallback(() => {
 	        const g = generateGraph(numNodes, weighted);
 	        setGraph(g);
-	        const s = graphAlgorithms[algorithm].steps(g, startNode);
+	        const dest = destNode >= numNodes ? numNodes - 1 : destNode;
+	        if (destNode >= numNodes)
+	            setDestNode(Math.max(0, numNodes - 1));
+	        const s = graphAlgorithms[algorithm].steps(g, startNode, dest);
 	        setSteps(s);
 	        setCurrentStep(0);
 	        setPlaying(false);
-	    }, [numNodes, startNode, algorithm, weighted]);
+	    }, [numNodes, startNode, destNode, algorithm, weighted]);
 	    reactExports.useEffect(() => {
 	        generateNewGraph();
 	    }, [generateNewGraph]);
@@ -68960,6 +69048,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            return 'visiting';
 	        return 'unvisited';
 	    };
+	    const isDestination = (nodeId) => nodeId === destNode;
 	    const getEdgeState = (from, to) => {
 	        if (!step)
 	            return 'default';
@@ -68985,7 +69074,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    };
 	    if (!graph)
 	        return null;
-	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Nodes:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 15, value: numNodes, onChange: e => setNumNodes(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { children: numNodes })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Start:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: startNode, onChange: e => setStartNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 100, max: 1500, value: 1600 - speed, onChange: e => setSpeed(1600 - Number(e.target.value)) })] }), jsxRuntimeExports.jsx(Button, { onClick: generateNewGraph, children: "Generate New Graph" }), jsxRuntimeExports.jsx(Button, { onClick: reset, variant: "secondary", children: "Reset" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: () => setPlaying(p => !p), children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Done' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Prev Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsx("div", { style: {
+	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Nodes:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 15, value: numNodes, onChange: e => setNumNodes(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { children: numNodes })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Start:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: startNode, onChange: e => setStartNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Dest:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: destNode, onChange: e => setDestNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 100, max: 1500, value: 1600 - speed, onChange: e => setSpeed(1600 - Number(e.target.value)) })] }), jsxRuntimeExports.jsx(Button, { onClick: generateNewGraph, children: "Generate New Graph" }), jsxRuntimeExports.jsx(Button, { onClick: reset, variant: "secondary", children: "Reset" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: () => setPlaying(p => !p), children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Done' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Prev Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsx("div", { style: {
 	                    width: '100%',
 	                    height: '500px',
 	                    background: 'var(--bg)',
@@ -69003,7 +69092,8 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                        }), graph.nodes.map(node => {
 	                            const state = getNodeState(node.id);
 	                            const isPath = step?.pathEdges.some(e => e.from === node.id || e.to === node.id);
-	                            return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 22, fill: NODE_COLORS[state] || NODE_COLORS.unvisited, stroke: isPath ? '#22c55e' : 'transparent', strokeWidth: isPath ? 3 : 0 }), jsxRuntimeExports.jsx("text", { x: node.x, y: node.y + 1, fill: "#fff", fontSize: 13, textAnchor: "middle", dominantBaseline: "middle", children: node.label })] }, node.id));
+	                            const isDest = isDestination(node.id);
+	                            return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 22, fill: NODE_COLORS[state] || NODE_COLORS.unvisited, stroke: isPath ? '#22c55e' : isDest ? '#eab308' : 'transparent', strokeWidth: isPath ? 3 : isDest ? 3 : 0 }), isDest && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 27, fill: "none", stroke: "#eab308", strokeWidth: 2, strokeDasharray: "4,3" })), jsxRuntimeExports.jsx("text", { x: node.x, y: node.y + 1, fill: "#fff", fontSize: 13, textAnchor: "middle", dominantBaseline: "middle", children: node.label })] }, node.id));
 	                        })] }) }), step && (jsxRuntimeExports.jsx("p", { style: { marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center' }, children: step.description })), step && (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '1rem', justifyContent: 'center', fontSize: '0.85rem' }, children: [algorithm === 'bfs' && (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Queue: " }), "[", step.queue.join(', '), "]"] })), algorithm === 'dfs' && (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Stack: " }), "[", step.stack.join(', '), "]"] })), algorithm === 'dijkstra' && (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Priority Queue: " }), "[", step.priorityQueue.map(e => `(${e.node},${e.dist})`).join(', '), "]"] })), jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Visited: " }), "[", step.visitedNodes.join(', '), "]"] }), jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Distances: " }), "[", Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).map(([n, d]) => `${n}:${d}`).join(', '), "]"] })] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '1rem', justifyContent: 'center' }, children: Object.entries(NODE_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '12px', height: '12px', background: color, borderRadius: '50%', display: 'inline-block' } }), state] }, state))) })] }));
 	}
 

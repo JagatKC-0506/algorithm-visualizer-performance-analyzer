@@ -26,6 +26,7 @@ const EDGE_COLORS: Record<string, string> = {
 export default function GraphVisualizer({ algorithm }: Props) {
   const [numNodes, setNumNodes] = useState(8);
   const [startNode, setStartNode] = useState(0);
+  const [destNode, setDestNode] = useState<number>(numNodes - 1);
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [steps, setSteps] = useState<GraphStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
@@ -38,11 +39,13 @@ export default function GraphVisualizer({ algorithm }: Props) {
   const generateNewGraph = useCallback(() => {
     const g = generateGraph(numNodes, weighted);
     setGraph(g);
-    const s = graphAlgorithms[algorithm].steps(g, startNode);
+    const dest = destNode >= numNodes ? numNodes - 1 : destNode;
+    if (destNode >= numNodes) setDestNode(Math.max(0, numNodes - 1));
+    const s = graphAlgorithms[algorithm].steps(g, startNode, dest);
     setSteps(s);
     setCurrentStep(0);
     setPlaying(false);
-  }, [numNodes, startNode, algorithm, weighted]);
+  }, [numNodes, startNode, destNode, algorithm, weighted]);
 
   useEffect(() => {
     generateNewGraph();
@@ -76,6 +79,8 @@ export default function GraphVisualizer({ algorithm }: Props) {
     return 'unvisited';
   };
 
+  const isDestination = (nodeId: number): boolean => nodeId === destNode;
+
   const getEdgeState = (from: number, to: number): string => {
     if (!step) return 'default';
     if (step.pathEdges.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from))) return 'path';
@@ -106,6 +111,10 @@ export default function GraphVisualizer({ algorithm }: Props) {
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
           Start:
           <input type="number" min={0} max={numNodes - 1} value={startNode} onChange={e => setStartNode(Number(e.target.value))} style={{ width: '50px' }} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+          Dest:
+          <input type="number" min={0} max={numNodes - 1} value={destNode} onChange={e => setDestNode(Number(e.target.value))} style={{ width: '50px' }} />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
           Speed:
@@ -159,14 +168,24 @@ export default function GraphVisualizer({ algorithm }: Props) {
           {graph.nodes.map(node => {
             const state = getNodeState(node.id);
             const isPath = step?.pathEdges.some(e => e.from === node.id || e.to === node.id);
+            const isDest = isDestination(node.id);
             return (
               <g key={node.id}>
                 <circle
                   cx={node.x} cy={node.y} r={22}
                   fill={NODE_COLORS[state] || NODE_COLORS.unvisited}
-                  stroke={isPath ? '#22c55e' : 'transparent'}
-                  strokeWidth={isPath ? 3 : 0}
+                  stroke={isPath ? '#22c55e' : isDest ? '#eab308' : 'transparent'}
+                  strokeWidth={isPath ? 3 : isDest ? 3 : 0}
                 />
+                {isDest && (
+                  <circle
+                    cx={node.x} cy={node.y} r={27}
+                    fill="none"
+                    stroke="#eab308"
+                    strokeWidth={2}
+                    strokeDasharray="4,3"
+                  />
+                )}
                 <text x={node.x} y={node.y + 1} fill="#fff" fontSize={13} textAnchor="middle" dominantBaseline="middle">
                   {node.label}
                 </text>

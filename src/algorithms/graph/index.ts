@@ -8,7 +8,7 @@ import { dfsSteps } from './dfs';
 import { dijkstraSteps } from './dijkstra';
 
 export const graphAlgorithms: Record<GraphAlgorithmType, {
-  steps: (graph: GraphData, start: number) => GraphStep[];
+  steps: (graph: GraphData, start: number, destination?: number) => GraphStep[];
 }> = {
   bfs: { steps: bfsSteps },
   dfs: { steps: dfsSteps },
