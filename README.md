@@ -245,19 +245,7 @@ npm install
 ## Run the Development Server
 
 ```bash
-npm run dev
-```
-
-Open your browser and visit:
-
-```
-http://localhost:5173
-```
-
-## Build for Production
-
-```bash
-npm run build
+npm start
 ```
 
 ---
