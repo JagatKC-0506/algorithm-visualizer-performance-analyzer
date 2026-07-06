@@ -25,10 +25,16 @@ export function dfsSteps(graph: GraphData, start: number, destination?: number):
     pathEdges: [],
     distances: new Map(distances),
     description: `Starting DFS from node ${start}`,
+    phase: 'exploring',
   });
 
   while (stack.length > 0) {
     const node = stack.pop()!;
+
+    const neighbors = graph.adjacencyList.get(node) || [];
+    const allNeighborsVisited = neighbors.length > 0 && neighbors.every(n => visited.has(n.to));
+    const isBacktrack = node !== start && allNeighborsVisited;
+
     steps.push({
       visitedNodes: [...visitedNodes],
       currentNode: node,
@@ -38,7 +44,10 @@ export function dfsSteps(graph: GraphData, start: number, destination?: number):
       exploredEdges: [...exploredEdges],
       pathEdges: [],
       distances: new Map(distances),
-      description: `Popped node ${node} from stack, exploring its neighbors`,
+      description: isBacktrack
+        ? `Backtracking to node ${node} \u2014 all neighbors already explored`
+        : `Popped node ${node} from stack, exploring its neighbors`,
+      phase: isBacktrack ? 'backtracking' : 'exploring',
     });
 
     if (destination !== undefined && node === destination) {
@@ -59,11 +68,11 @@ export function dfsSteps(graph: GraphData, start: number, destination?: number):
         pathEdges: path,
         distances: new Map(distances),
         description: `DFS complete! Path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+        phase: 'path-found',
       });
       return steps;
     }
 
-    const neighbors = graph.adjacencyList.get(node) || [];
     for (const { to } of neighbors) {
       if (!visited.has(to)) {
         visited.add(to);
@@ -82,6 +91,7 @@ export function dfsSteps(graph: GraphData, start: number, destination?: number):
           pathEdges: [],
           distances: new Map(distances),
           description: `Discovered neighbor ${to} from node ${node}. Depth level: ${distances.get(to)}`,
+          phase: 'exploring',
         });
       }
     }
@@ -114,6 +124,7 @@ export function dfsSteps(graph: GraphData, start: number, destination?: number):
     description: destination
       ? `DFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
       : 'DFS complete! All reachable nodes visited.',
+    phase: 'complete',
   });
 
   return steps;

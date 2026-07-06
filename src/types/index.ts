@@ -55,6 +55,7 @@ export interface GraphStep {
   pathEdges: { from: number; to: number }[];
   distances: Map<number, number>;
   description: string;
+  phase?: 'exploring' | 'backtracking' | 'path-found' | 'complete';
 }
 
 export interface GraphMetrics {

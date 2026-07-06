@@ -68582,6 +68582,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        pathEdges: [],
 	        distances: new Map(distances),
 	        description: `Starting BFS from node ${start}`,
+	        phase: 'exploring',
 	    });
 	    while (queue.length > 0) {
 	        const node = queue.shift();
@@ -68595,6 +68596,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            pathEdges: [],
 	            distances: new Map(distances),
 	            description: `Dequeued node ${node}, visiting its neighbors`,
+	            phase: 'exploring',
 	        });
 	        const neighbors = graph.adjacencyList.get(node) || [];
 	        for (const { to } of neighbors) {
@@ -68618,6 +68620,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                    description: reachedDest
 	                        ? `Reached destination node ${to}! Distance: ${distances.get(to)}`
 	                        : `Visited neighbor ${to} from node ${node}. Distance: ${distances.get(to)}`,
+	                    phase: 'exploring',
 	                });
 	                if (destination !== undefined && to === destination) {
 	                    const path = [];
@@ -68637,6 +68640,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                        pathEdges: path,
 	                        distances: new Map(distances),
 	                        description: `BFS complete! Shortest path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+	                        phase: 'path-found',
 	                    });
 	                    return steps;
 	                }
@@ -68669,6 +68673,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        description: destination
 	            ? `BFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
 	            : 'BFS complete! All reachable nodes visited.',
+	        phase: 'complete',
 	    });
 	    return steps;
 	}
@@ -68695,9 +68700,13 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        pathEdges: [],
 	        distances: new Map(distances),
 	        description: `Starting DFS from node ${start}`,
+	        phase: 'exploring',
 	    });
 	    while (stack.length > 0) {
 	        const node = stack.pop();
+	        const neighbors = graph.adjacencyList.get(node) || [];
+	        const allNeighborsVisited = neighbors.length > 0 && neighbors.every(n => visited.has(n.to));
+	        const isBacktrack = node !== start && allNeighborsVisited;
 	        steps.push({
 	            visitedNodes: [...visitedNodes],
 	            currentNode: node,
@@ -68707,7 +68716,10 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            exploredEdges: [...exploredEdges],
 	            pathEdges: [],
 	            distances: new Map(distances),
-	            description: `Popped node ${node} from stack, exploring its neighbors`,
+	            description: isBacktrack
+	                ? `Backtracking to node ${node} \u2014 all neighbors already explored`
+	                : `Popped node ${node} from stack, exploring its neighbors`,
+	            phase: isBacktrack ? 'backtracking' : 'exploring',
 	        });
 	        if (destination !== undefined && node === destination) {
 	            const path = [];
@@ -68727,10 +68739,10 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                pathEdges: path,
 	                distances: new Map(distances),
 	                description: `DFS complete! Path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+	                phase: 'path-found',
 	            });
 	            return steps;
 	        }
-	        const neighbors = graph.adjacencyList.get(node) || [];
 	        for (const { to } of neighbors) {
 	            if (!visited.has(to)) {
 	                visited.add(to);
@@ -68749,6 +68761,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                    pathEdges: [],
 	                    distances: new Map(distances),
 	                    description: `Discovered neighbor ${to} from node ${node}. Depth level: ${distances.get(to)}`,
+	                    phase: 'exploring',
 	                });
 	            }
 	        }
@@ -68779,6 +68792,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        description: destination
 	            ? `DFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
 	            : 'DFS complete! All reachable nodes visited.',
+	        phase: 'complete',
 	    });
 	    return steps;
 	}
@@ -68806,6 +68820,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        pathEdges: [],
 	        distances: new Map(distances),
 	        description: `Starting Dijkstra from node ${start}. Initial distances set.`,
+	        phase: 'exploring',
 	    });
 	    while (pq.length > 0) {
 	        pq.sort((a, b) => a.dist - b.dist);
@@ -68824,6 +68839,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            pathEdges: [],
 	            distances: new Map(distances),
 	            description: `Extracted node ${node} from priority queue with distance ${dist}`,
+	            phase: 'exploring',
 	        });
 	        if (destination !== undefined && node === destination) {
 	            const path = [];
@@ -68843,6 +68859,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                pathEdges: path,
 	                distances: new Map(distances),
 	                description: `Dijkstra complete! Shortest path from ${start} to ${destination}: distance=${dist}, path: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+	                phase: 'path-found',
 	            });
 	            return steps;
 	        }
@@ -68866,6 +68883,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                    pathEdges: [],
 	                    distances: new Map(distances),
 	                    description: `Updated distance to node ${to}: ${newDist} (via ${node}, weight ${weight})`,
+	                    phase: 'exploring',
 	                });
 	            }
 	        }
@@ -68897,6 +68915,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        description: destination
 	            ? `Dijkstra complete. Destination ${destination} ${finalPathEdges.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
 	            : 'Dijkstra complete! Shortest paths found.',
+	        phase: 'complete',
 	    });
 	    return steps;
 	}
@@ -68981,18 +69000,97 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    return { nodes, edges, adjacencyList };
 	}
 
+	function StepHistoryTable({ steps, currentStep, algorithm, onJumpToStep, hasStarted }) {
+	    const activeRef = reactExports.useRef(null);
+	    const scrollRef = reactExports.useRef(null);
+	    reactExports.useEffect(() => {
+	        if (activeRef.current && scrollRef.current) {
+	            const row = activeRef.current;
+	            const container = scrollRef.current;
+	            const rowTop = row.offsetTop;
+	            const rowBottom = rowTop + row.offsetHeight;
+	            const viewTop = container.scrollTop;
+	            const viewBottom = viewTop + container.clientHeight;
+	            if (rowTop < viewTop || rowBottom > viewBottom) {
+	                container.scrollTop = rowTop - container.clientHeight / 3;
+	            }
+	        }
+	    }, [currentStep]);
+	    if (!hasStarted || steps.length === 0)
+	        return null;
+	    const formatDistances = (distances) => {
+	        return Array.from(distances.entries())
+	            .filter(([, d]) => d < Infinity)
+	            .map(([n, d]) => `${n}:${d}`)
+	            .join(', ');
+	    };
+	    const formatDataStructure = (step) => {
+	        if (algorithm === 'bfs')
+	            return `[${step.queue.join(', ')}]`;
+	        if (algorithm === 'dfs')
+	            return `[${step.stack.join(', ')}]`;
+	        return `[${step.priorityQueue.map(e => `${e.node}(${e.dist})`).join(', ')}]`;
+	    };
+	    const dataStructureLabel = algorithm === 'bfs' ? 'Queue' : algorithm === 'dfs' ? 'Stack' : 'PQ';
+	    return (jsxRuntimeExports.jsxs("div", { style: {
+	            marginTop: '1.25rem',
+	            border: '1px solid var(--border)',
+	            borderRadius: '0.5rem',
+	            overflow: 'hidden',
+	        }, children: [jsxRuntimeExports.jsxs("div", { style: {
+	                    padding: '0.6rem 1rem',
+	                    background: 'var(--accent-alpha)',
+	                    borderBottom: '1px solid var(--border)',
+	                    fontSize: '0.85rem',
+	                    fontWeight: 600,
+	                    color: 'var(--text)',
+	                    display: 'flex',
+	                    alignItems: 'center',
+	                    gap: '0.5rem',
+	                }, children: ["Step History", jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-secondary)' }, children: ["(", steps.length, " steps)"] })] }), jsxRuntimeExports.jsx("div", { ref: scrollRef, style: { maxHeight: '320px', overflowY: 'auto' }, children: jsxRuntimeExports.jsxs("table", { style: { width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }, children: [jsxRuntimeExports.jsx("thead", { children: jsxRuntimeExports.jsxs("tr", { style: { background: 'var(--surface)', borderBottom: '2px solid var(--border)', position: 'sticky', top: 0, zIndex: 1 }, children: [jsxRuntimeExports.jsx("th", { style: { padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }, children: "#" }), jsxRuntimeExports.jsx("th", { style: { padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }, children: "Action" }), jsxRuntimeExports.jsx("th", { style: { padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }, children: "Node" }), jsxRuntimeExports.jsx("th", { style: { padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }, children: dataStructureLabel }), jsxRuntimeExports.jsx("th", { style: { padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }, children: "Visited" }), jsxRuntimeExports.jsx("th", { style: { padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }, children: "Distances" })] }) }), jsxRuntimeExports.jsx("tbody", { children: steps.map((step, idx) => (jsxRuntimeExports.jsxs("tr", { ref: idx === currentStep ? activeRef : null, className: `step-table-row${idx === currentStep ? ' active' : ''}`, onClick: () => onJumpToStep(idx), style: {
+	                                    cursor: 'pointer',
+	                                    borderBottom: '1px solid var(--border)',
+	                                    background: idx === currentStep ? 'var(--accent-alpha)' : undefined,
+	                                    transition: 'background 0.2s',
+	                                }, children: [jsxRuntimeExports.jsx("td", { style: { padding: '0.4rem 0.75rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }, children: idx }), jsxRuntimeExports.jsx("td", { style: { padding: '0.4rem 0.75rem', color: 'var(--text)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, children: step.description }), jsxRuntimeExports.jsx("td", { style: { padding: '0.4rem 0.75rem', fontVariantNumeric: 'tabular-nums' }, children: step.currentNode >= 0 ? (jsxRuntimeExports.jsx("span", { style: {
+	                                                display: 'inline-flex',
+	                                                alignItems: 'center',
+	                                                justifyContent: 'center',
+	                                                width: '22px',
+	                                                height: '22px',
+	                                                borderRadius: '50%',
+	                                                background: step.phase === 'backtracking' ? 'rgba(168,130,255,0.3)' : step.currentNode === step.currentNode ? 'var(--accent-alpha)' : undefined,
+	                                                fontSize: '0.75rem',
+	                                                fontWeight: 600,
+	                                                color: step.phase === 'backtracking' ? '#a882ff' : 'var(--accent)',
+	                                            }, children: step.currentNode })) : (jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem' }, children: "\u2014" })) }), jsxRuntimeExports.jsx("td", { style: { padding: '0.4rem 0.75rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }, children: formatDataStructure(step) }), jsxRuntimeExports.jsxs("td", { style: { padding: '0.4rem 0.75rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }, children: ["[", step.visitedNodes.slice(-5).join(', '), step.visitedNodes.length > 5 ? '...' : '', "]"] }), jsxRuntimeExports.jsx("td", { style: { padding: '0.4rem 0.75rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }, children: formatDistances(step.distances) || '—' })] }, idx))) })] }) })] }));
+	}
+
 	const NODE_COLORS = {
 	    unvisited: 'var(--text-secondary)',
 	    visiting: '#f59e0b',
 	    visited: '#3b82f6',
 	    current: '#ef4444',
 	    path: '#22c55e',
+	    backtrack: '#a882ff',
 	};
 	const EDGE_COLORS = {
 	    default: 'var(--border)',
 	    exploring: '#f59e0b',
 	    visited: '#3b82f6',
 	    path: '#22c55e',
+	};
+	const PHASE_BG = {
+	    exploring: 'rgba(59,130,246,0.1)',
+	    backtracking: 'rgba(168,130,255,0.1)',
+	    'path-found': 'rgba(34,197,94,0.1)',
+	    complete: 'rgba(34,197,94,0.08)',
+	};
+	const PHASE_ICON = {
+	    exploring: '\u25B6',
+	    backtracking: '\u21A9',
+	    'path-found': '\u2605',
+	    complete: '\u2713',
 	};
 	function GraphVisualizer({ algorithm }) {
 	    const [numNodes, setNumNodes] = reactExports.useState(8);
@@ -69003,9 +69101,14 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    const [currentStep, setCurrentStep] = reactExports.useState(0);
 	    const [playing, setPlaying] = reactExports.useState(false);
 	    const [speed, setSpeed] = reactExports.useState(500);
+	    const [hasStarted, setHasStarted] = reactExports.useState(false);
+	    const [pathRevealCount, setPathRevealCount] = reactExports.useState(0);
 	    const timerRef = reactExports.useRef(null);
+	    const pathTimerRef = reactExports.useRef(null);
 	    const weighted = algorithm === 'dijkstra';
 	    const generateNewGraph = reactExports.useCallback(() => {
+	        if (pathTimerRef.current)
+	            clearInterval(pathTimerRef.current);
 	        const g = generateGraph(numNodes, weighted);
 	        setGraph(g);
 	        const dest = destNode >= numNodes ? numNodes - 1 : destNode;
@@ -69015,6 +69118,8 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        setSteps(s);
 	        setCurrentStep(0);
 	        setPlaying(false);
+	        setHasStarted(false);
+	        setPathRevealCount(0);
 	    }, [numNodes, startNode, destNode, algorithm, weighted]);
 	    reactExports.useEffect(() => {
 	        generateNewGraph();
@@ -69034,12 +69139,50 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            return () => clearInterval(interval);
 	        }
 	    }, [playing, speed, steps.length]);
+	    reactExports.useEffect(() => {
+	        return () => {
+	            if (timerRef.current)
+	                clearInterval(timerRef.current);
+	            if (pathTimerRef.current)
+	                clearInterval(pathTimerRef.current);
+	        };
+	    }, []);
 	    const step = currentStep < steps.length ? steps[currentStep] : null;
+	    reactExports.useEffect(() => {
+	        if (pathTimerRef.current) {
+	            clearInterval(pathTimerRef.current);
+	            pathTimerRef.current = null;
+	        }
+	        if (step && step.pathEdges.length > 0 && step.phase === 'path-found') {
+	            setPathRevealCount(0);
+	            let count = 0;
+	            pathTimerRef.current = window.setInterval(() => {
+	                count++;
+	                setPathRevealCount(count);
+	                if (count >= step.pathEdges.length) {
+	                    if (pathTimerRef.current)
+	                        clearInterval(pathTimerRef.current);
+	                    pathTimerRef.current = null;
+	                }
+	            }, 250);
+	        }
+	        else {
+	            setPathRevealCount(step?.pathEdges.length || 0);
+	        }
+	    }, [currentStep, step?.pathEdges.length]);
 	    const getNodeState = (nodeId) => {
 	        if (!step)
 	            return 'unvisited';
-	        if (nodeId === step.currentNode)
+	        if (nodeId === step.currentNode) {
+	            if (step.phase === 'backtracking')
+	                return 'backtrack';
 	            return 'current';
+	        }
+	        if (step.pathEdges.length > 0 && pathRevealCount > 0) {
+	            const revealed = step.pathEdges.slice(0, pathRevealCount);
+	            if (revealed.some(e => e.from === nodeId || e.to === nodeId))
+	                return 'path';
+	        }
 	        if (step.pathEdges.some(e => e.from === nodeId || e.to === nodeId))
 	            return 'path';
 	        if (step.visitedNodes.includes(nodeId))
@@ -69048,10 +69191,22 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            return 'visiting';
 	        return 'unvisited';
 	    };
+	    const isFrontier = (nodeId) => {
+	        if (!step)
+	            return false;
+	        return (step.queue.includes(nodeId) ||
+	            step.stack.includes(nodeId) ||
+	            step.priorityQueue.some(e => e.node === nodeId));
+	    };
 	    const isDestination = (nodeId) => nodeId === destNode;
 	    const getEdgeState = (from, to) => {
 	        if (!step)
 	            return 'default';
+	        if (step.pathEdges.length > 0 && pathRevealCount > 0) {
+	            const revealed = step.pathEdges.slice(0, pathRevealCount);
+	            if (revealed.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from)))
+	                return 'path';
+	        }
 	        if (step.pathEdges.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from)))
 	            return 'path';
 	        if (step.exploredEdges.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from)))
@@ -69068,33 +69223,157 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            setCurrentStep(currentStep + 1);
 	        }
 	    };
+	    const jumpToStep = (stepIdx) => {
+	        setPlaying(false);
+	        setCurrentStep(stepIdx);
+	    };
 	    const reset = () => {
 	        setPlaying(false);
 	        setCurrentStep(0);
 	    };
+	    const handlePlay = () => {
+	        if (!playing && !hasStarted)
+	            setHasStarted(true);
+	        if (currentStep >= steps.length - 1) {
+	            setCurrentStep(0);
+	            setPlaying(true);
+	            if (!hasStarted)
+	                setHasStarted(true);
+	        }
+	        else {
+	            setPlaying(p => !p);
+	            if (!hasStarted)
+	                setHasStarted(true);
+	        }
+	    };
 	    if (!graph)
 	        return null;
-	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Nodes:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 15, value: numNodes, onChange: e => setNumNodes(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { children: numNodes })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Start:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: startNode, onChange: e => setStartNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Dest:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: destNode, onChange: e => setDestNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 100, max: 1500, value: 1600 - speed, onChange: e => setSpeed(1600 - Number(e.target.value)) })] }), jsxRuntimeExports.jsx(Button, { onClick: generateNewGraph, children: "Generate New Graph" }), jsxRuntimeExports.jsx(Button, { onClick: reset, variant: "secondary", children: "Reset" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: () => setPlaying(p => !p), children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Done' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Prev Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsx("div", { style: {
+	    const dataStructureLabel = algorithm === 'bfs' ? 'Queue' : algorithm === 'dfs' ? 'Stack' : 'Priority Queue';
+	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Nodes:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 15, value: numNodes, onChange: e => setNumNodes(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { children: numNodes })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Start:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: startNode, onChange: e => setStartNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Dest:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: destNode, onChange: e => setDestNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 100, max: 1500, value: 1600 - speed, onChange: e => setSpeed(1600 - Number(e.target.value)) })] }), jsxRuntimeExports.jsx(Button, { onClick: generateNewGraph, children: "Generate New Graph" }), jsxRuntimeExports.jsx(Button, { onClick: reset, variant: "secondary", children: "Reset" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: handlePlay, children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Replay' : !hasStarted ? 'Play' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Prev Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsx("div", { style: {
 	                    width: '100%',
-	                    height: '500px',
+	                    height: '520px',
 	                    background: 'var(--bg)',
 	                    borderRadius: '0.5rem',
 	                    border: '1px solid var(--border)',
 	                    position: 'relative',
 	                    overflow: 'hidden',
-	                }, children: jsxRuntimeExports.jsxs("svg", { width: "100%", height: "100%", viewBox: "0 0 700 560", children: [graph.edges.map((edge, ei) => {
+	                }, children: jsxRuntimeExports.jsxs("svg", { className: "graph-visualizer-svg", width: "100%", height: "100%", viewBox: "0 0 700 560", children: [jsxRuntimeExports.jsxs("defs", { children: [jsxRuntimeExports.jsx("marker", { id: "arrow-exploring", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#f59e0b" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-path", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#22c55e" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-default", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "5", markerHeight: "5", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "var(--border)" }) })] }), graph.edges.map((edge, ei) => {
 	                            const from = graph.nodes[edge.from];
 	                            const to = graph.nodes[edge.to];
 	                            if (!from || !to)
 	                                return null;
 	                            const state = getEdgeState(edge.from, edge.to);
-	                            return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("line", { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: EDGE_COLORS[state] || EDGE_COLORS.default, strokeWidth: state === 'path' ? 3 : state === 'exploring' ? 2 : 1, strokeDasharray: state === 'exploring' ? '5,5' : 'none' }), weighted && (jsxRuntimeExports.jsx("text", { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 8, fill: "var(--text-secondary)", fontSize: 12, textAnchor: "middle", children: edge.weight }))] }, ei));
+	                            const isPath = state === 'path';
+	                            return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("line", { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: EDGE_COLORS[state] || EDGE_COLORS.default, strokeWidth: isPath ? 3 : state === 'exploring' ? 2.5 : 1, strokeDasharray: state === 'exploring' ? '6,4' : 'none', className: isPath ? 'path-edge' : state === 'exploring' ? 'exploring-edge' : undefined, markerEnd: isPath ? 'url(#arrow-path)' : state === 'exploring' ? 'url(#arrow-exploring)' : 'url(#arrow-default)' }), weighted && (jsxRuntimeExports.jsx("text", { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 8, fill: "var(--text-secondary)", fontSize: 12, textAnchor: "middle", style: { pointerEvents: 'none' }, children: edge.weight }))] }, ei));
 	                        }), graph.nodes.map(node => {
 	                            const state = getNodeState(node.id);
-	                            const isPath = step?.pathEdges.some(e => e.from === node.id || e.to === node.id);
+	                            const isFront = isFrontier(node.id);
 	                            const isDest = isDestination(node.id);
-	                            return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 22, fill: NODE_COLORS[state] || NODE_COLORS.unvisited, stroke: isPath ? '#22c55e' : isDest ? '#eab308' : 'transparent', strokeWidth: isPath ? 3 : isDest ? 3 : 0 }), isDest && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 27, fill: "none", stroke: "#eab308", strokeWidth: 2, strokeDasharray: "4,3" })), jsxRuntimeExports.jsx("text", { x: node.x, y: node.y + 1, fill: "#fff", fontSize: 13, textAnchor: "middle", dominantBaseline: "middle", children: node.label })] }, node.id));
-	                        })] }) }), step && (jsxRuntimeExports.jsx("p", { style: { marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center' }, children: step.description })), step && (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '1rem', justifyContent: 'center', fontSize: '0.85rem' }, children: [algorithm === 'bfs' && (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Queue: " }), "[", step.queue.join(', '), "]"] })), algorithm === 'dfs' && (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Stack: " }), "[", step.stack.join(', '), "]"] })), algorithm === 'dijkstra' && (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Priority Queue: " }), "[", step.priorityQueue.map(e => `(${e.node},${e.dist})`).join(', '), "]"] })), jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Visited: " }), "[", step.visitedNodes.join(', '), "]"] }), jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("strong", { children: "Distances: " }), "[", Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).map(([n, d]) => `${n}:${d}`).join(', '), "]"] })] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '1rem', justifyContent: 'center' }, children: Object.entries(NODE_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '12px', height: '12px', background: color, borderRadius: '50%', display: 'inline-block' } }), state] }, state))) })] }));
+	                            const isStart = node.id === startNode;
+	                            const nodeDist = step?.distances.get(node.id);
+	                            const showDist = nodeDist !== undefined && nodeDist < Infinity && state !== 'unvisited';
+	                            const isBacktrack = state === 'backtrack';
+	                            const isPath = state === 'path';
+	                            return (jsxRuntimeExports.jsxs("g", { children: [isDest && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 27, fill: "none", stroke: "#eab308", strokeWidth: 2, strokeDasharray: "4,3" })), isFront && !isBacktrack && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 22, fill: "none", stroke: "#f59e0b", strokeWidth: 1.5, className: "frontier-pulse", style: { transformOrigin: `${node.x}px ${node.y}px` } })), jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: isBacktrack ? 18 : isPath ? 24 : 22, fill: isBacktrack ? 'rgba(168,130,255,0.4)' : NODE_COLORS[state] || NODE_COLORS.unvisited, stroke: isBacktrack ? '#a882ff' : isPath ? '#22c55e' : isDest ? '#eab308' : isStart ? '#6366f1' : state === 'current' ? '#ef4444' : 'transparent', strokeWidth: isBacktrack ? 2 : isPath ? 3 : isDest ? 3 : state === 'current' ? 3 : 0, style: { opacity: isBacktrack ? 0.5 : 1 } }), jsxRuntimeExports.jsx("text", { x: node.x, y: node.y + 1, fill: "#fff", fontSize: 13, textAnchor: "middle", dominantBaseline: "middle", style: { pointerEvents: 'none' }, children: node.label }), isStart && (jsxRuntimeExports.jsx("text", { x: node.x, y: node.y - 28, fill: "#6366f1", fontSize: 11, textAnchor: "middle", fontWeight: 700, children: "START" })), isDest && (jsxRuntimeExports.jsx("text", { x: node.x, y: node.y - 28, fill: "#eab308", fontSize: 11, textAnchor: "middle", fontWeight: 700, children: "DEST" })), showDist && (jsxRuntimeExports.jsxs("text", { x: node.x, y: node.y + 36, fill: "var(--text-secondary)", fontSize: 10, textAnchor: "middle", style: { pointerEvents: 'none' }, children: ["d=", nodeDist] }))] }, node.id));
+	                        })] }) }), step && (jsxRuntimeExports.jsxs("div", { style: {
+	                    marginTop: '0.75rem',
+	                    padding: '0.75rem 1rem',
+	                    borderRadius: '0.5rem',
+	                    background: step.phase ? PHASE_BG[step.phase] || 'var(--surface)' : 'var(--surface)',
+	                    border: '1px solid var(--border)',
+	                    display: 'flex',
+	                    alignItems: 'flex-start',
+	                    gap: '0.5rem',
+	                }, children: [step.phase && (jsxRuntimeExports.jsx("span", { style: { fontSize: '1rem', flexShrink: 0, marginTop: '1px' }, children: PHASE_ICON[step.phase] || '\u25B6' })), jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [jsxRuntimeExports.jsx("div", { style: { fontSize: '0.9rem', color: 'var(--text)', lineHeight: 1.5 }, children: step.description }), step.phase === 'path-found' && step.pathEdges.length > 0 && (jsxRuntimeExports.jsxs("div", { style: { marginTop: '0.3rem', fontSize: '0.8rem', color: '#22c55e', fontFamily: 'monospace' }, children: ["Path: ", step.pathEdges.map(e => `${e.from}\u2192${e.to}`).join(' ')] }))] }), step.phase && (jsxRuntimeExports.jsx("span", { style: {
+	                            fontSize: '0.7rem',
+	                            textTransform: 'uppercase',
+	                            letterSpacing: '0.5px',
+	                            color: step.phase === 'backtracking' ? '#a882ff' : step.phase === 'path-found' ? '#22c55e' : 'var(--text-secondary)',
+	                            fontWeight: 600,
+	                            flexShrink: 0,
+	                        }, children: step.phase }))] })), step && (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }, children: [jsxRuntimeExports.jsxs("div", { style: {
+	                            padding: '0.5rem 1rem',
+	                            borderRadius: '0.375rem',
+	                            background: 'var(--surface)',
+	                            border: '1px solid var(--border)',
+	                            fontSize: '0.8rem',
+	                        }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: dataStructureLabel }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: [algorithm === 'bfs' && (step.queue.length > 0 ? step.queue.map((n, i) => (jsxRuntimeExports.jsx("span", { style: {
+	                                            display: 'inline-flex',
+	                                            alignItems: 'center',
+	                                            justifyContent: 'center',
+	                                            minWidth: '24px',
+	                                            height: '24px',
+	                                            padding: '0 6px',
+	                                            borderRadius: '4px',
+	                                            background: 'rgba(245,158,11,0.15)',
+	                                            color: '#f59e0b',
+	                                            fontWeight: 600,
+	                                            fontSize: '0.75rem',
+	                                            fontFamily: 'monospace',
+	                                        }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" })), algorithm === 'dfs' && (step.stack.length > 0 ? step.stack.map((n, i) => (jsxRuntimeExports.jsx("span", { style: {
+	                                            display: 'inline-flex',
+	                                            alignItems: 'center',
+	                                            justifyContent: 'center',
+	                                            minWidth: '24px',
+	                                            height: '24px',
+	                                            padding: '0 6px',
+	                                            borderRadius: '4px',
+	                                            background: 'rgba(245,158,11,0.15)',
+	                                            color: '#f59e0b',
+	                                            fontWeight: 600,
+	                                            fontSize: '0.75rem',
+	                                            fontFamily: 'monospace',
+	                                        }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" })), algorithm === 'dijkstra' && (step.priorityQueue.length > 0 ? step.priorityQueue.map((e, i) => (jsxRuntimeExports.jsxs("span", { style: {
+	                                            display: 'inline-flex',
+	                                            alignItems: 'center',
+	                                            gap: '2px',
+	                                            height: '24px',
+	                                            padding: '0 6px',
+	                                            borderRadius: '4px',
+	                                            background: 'rgba(245,158,11,0.15)',
+	                                            color: '#f59e0b',
+	                                            fontWeight: 600,
+	                                            fontSize: '0.75rem',
+	                                            fontFamily: 'monospace',
+	                                        }, children: [jsxRuntimeExports.jsx("span", { children: e.node }), jsxRuntimeExports.jsxs("span", { style: { color: 'rgba(245,158,11,0.6)' }, children: ["(", e.dist, ")"] })] }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" }))] })] }), jsxRuntimeExports.jsxs("div", { style: {
+	                            padding: '0.5rem 1rem',
+	                            borderRadius: '0.375rem',
+	                            background: 'var(--surface)',
+	                            border: '1px solid var(--border)',
+	                            fontSize: '0.8rem',
+	                        }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: "Visited" }), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: step.visitedNodes.length > 0 ? step.visitedNodes.map((n, i) => (jsxRuntimeExports.jsx("span", { style: {
+	                                        display: 'inline-flex',
+	                                        alignItems: 'center',
+	                                        justifyContent: 'center',
+	                                        minWidth: '24px',
+	                                        height: '24px',
+	                                        padding: '0 6px',
+	                                        borderRadius: '4px',
+	                                        background: 'rgba(59,130,246,0.15)',
+	                                        color: '#3b82f6',
+	                                        fontWeight: 600,
+	                                        fontSize: '0.75rem',
+	                                        fontFamily: 'monospace',
+	                                    }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "none" }) })] }), jsxRuntimeExports.jsxs("div", { style: {
+	                            padding: '0.5rem 1rem',
+	                            borderRadius: '0.375rem',
+	                            background: 'var(--surface)',
+	                            border: '1px solid var(--border)',
+	                            fontSize: '0.8rem',
+	                        }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: "Distances" }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: [Array.from(step.distances.entries())
+	                                        .filter(([, d]) => d < Infinity)
+	                                        .map(([n, d]) => (jsxRuntimeExports.jsxs("span", { style: {
+	                                            display: 'inline-flex',
+	                                            alignItems: 'center',
+	                                            gap: '2px',
+	                                            height: '24px',
+	                                            padding: '0 6px',
+	                                            borderRadius: '4px',
+	                                            background: 'rgba(99,102,241,0.1)',
+	                                            color: 'var(--text-secondary)',
+	                                            fontSize: '0.75rem',
+	                                            fontFamily: 'monospace',
+	                                        }, children: [jsxRuntimeExports.jsxs("span", { style: { color: 'var(--text)' }, children: [n, ":"] }), jsxRuntimeExports.jsx("span", { children: d })] }, n))), Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).length === 0 && (jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "none" }))] })] })] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }, children: Object.entries(NODE_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '12px', height: '12px', background: color, borderRadius: '50%', display: 'inline-block' } }), state] }, state))) }), jsxRuntimeExports.jsx(StepHistoryTable, { steps: steps, currentStep: currentStep, algorithm: algorithm, onJumpToStep: jumpToStep, hasStarted: hasStarted, playing: playing })] }));
 	}
 
 	const GRAPH_ALGORITHM_KEYS = ['bfs', 'dfs', 'dijkstra'];

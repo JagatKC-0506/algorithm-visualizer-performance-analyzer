@@ -31,6 +31,7 @@ export function dijkstraSteps(graph: GraphData, start: number, destination?: num
     pathEdges: [],
     distances: new Map(distances),
     description: `Starting Dijkstra from node ${start}. Initial distances set.`,
+    phase: 'exploring',
   });
 
   while (pq.length > 0) {
@@ -52,6 +53,7 @@ export function dijkstraSteps(graph: GraphData, start: number, destination?: num
       pathEdges: [],
       distances: new Map(distances),
       description: `Extracted node ${node} from priority queue with distance ${dist}`,
+      phase: 'exploring',
     });
 
     if (destination !== undefined && node === destination) {
@@ -72,6 +74,7 @@ export function dijkstraSteps(graph: GraphData, start: number, destination?: num
         pathEdges: path,
         distances: new Map(distances),
         description: `Dijkstra complete! Shortest path from ${start} to ${destination}: distance=${dist}, path: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
+        phase: 'path-found',
       });
       return steps;
     }
@@ -95,6 +98,7 @@ export function dijkstraSteps(graph: GraphData, start: number, destination?: num
           pathEdges: [],
           distances: new Map(distances),
           description: `Updated distance to node ${to}: ${newDist} (via ${node}, weight ${weight})`,
+          phase: 'exploring',
         });
       }
     }
@@ -128,6 +132,7 @@ export function dijkstraSteps(graph: GraphData, start: number, destination?: num
     description: destination
       ? `Dijkstra complete. Destination ${destination} ${finalPathEdges.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
       : 'Dijkstra complete! Shortest paths found.',
+    phase: 'complete',
   });
 
   return steps;

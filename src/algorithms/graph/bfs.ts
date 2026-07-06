@@ -25,6 +25,7 @@ export function bfsSteps(graph: GraphData, start: number, destination?: number):
     pathEdges: [],
     distances: new Map(distances),
     description: `Starting BFS from node ${start}`,
+    phase: 'exploring',
   });
 
   while (queue.length > 0) {
@@ -39,6 +40,7 @@ export function bfsSteps(graph: GraphData, start: number, destination?: number):
       pathEdges: [],
       distances: new Map(distances),
       description: `Dequeued node ${node}, visiting its neighbors`,
+      phase: 'exploring',
     });
 
     const neighbors = graph.adjacencyList.get(node) || [];
@@ -63,6 +65,7 @@ export function bfsSteps(graph: GraphData, start: number, destination?: number):
           description: reachedDest
             ? `Reached destination node ${to}! Distance: ${distances.get(to)}`
             : `Visited neighbor ${to} from node ${node}. Distance: ${distances.get(to)}`,
+          phase: 'exploring',
         });
         if (destination !== undefined && to === destination) {
           const path: { from: number; to: number }[] = [];
@@ -82,7 +85,8 @@ export function bfsSteps(graph: GraphData, start: number, destination?: number):
             pathEdges: path,
             distances: new Map(distances),
             description: `BFS complete! Shortest path found from ${start} to ${destination}: ${path.map(e => `${e.from}\u2192${e.to}`).join(' ')}`,
-          });
+          phase: 'path-found',
+        });
           return steps;
         }
       }
@@ -116,6 +120,7 @@ export function bfsSteps(graph: GraphData, start: number, destination?: number):
     description: destination
       ? `BFS complete. Destination ${destination} ${finalPath.length > 0 ? 'reached' : 'not reachable'} from ${start}.`
       : 'BFS complete! All reachable nodes visited.',
+    phase: 'complete',
   });
 
   return steps;
