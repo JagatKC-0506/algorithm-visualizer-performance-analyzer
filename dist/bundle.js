@@ -38109,6 +38109,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                swapping: [],
 	                sorted: a.slice(n - i).map((_, idx) => n - i + idx),
 	                current: j,
+	                subarray: { start: 0, end: n - i },
 	                description: `Comparing a[${j}] = ${a[j]} and a[${j + 1}] = ${a[j + 1]}`,
 	            });
 	            if (a[j] > a[j + 1]) {
@@ -38119,6 +38120,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                    swapping: [j, j + 1],
 	                    sorted: a.slice(n - i).map((_, idx) => n - i + idx),
 	                    current: j + 1,
+	                    subarray: { start: 0, end: n - i },
 	                    description: `Swapped a[${j}] and a[${j + 1}]`,
 	                });
 	                swapped = true;
@@ -38131,6 +38133,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                swapping: [],
 	                sorted: a.map((_, idx) => idx),
 	                current: -1,
+	                subarray: { start: 0, end: n },
 	                description: 'No swaps in this pass. Array is sorted!',
 	            });
 	            break;
@@ -38189,6 +38192,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                swapping: [],
 	                sorted,
 	                current: i,
+	                subarray: { start: i, end: n },
 	                description: `Finding minimum: comparing a[${j}] = ${a[j]} with current min a[${minIdx}] = ${a[minIdx]}`,
 	            });
 	            if (a[j] < a[minIdx]) {
@@ -38203,6 +38207,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                swapping: [i, minIdx],
 	                sorted: sorted,
 	                current: i,
+	                subarray: { start: i, end: n },
 	                description: `Swapped a[${i}] with a[${minIdx}]: ${a[i]} ↔ ${a[minIdx]}`,
 	            });
 	        }
@@ -38258,45 +38263,50 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	    for (let i = 1; i < n; i++) {
 	        const key = a[i];
 	        let j = i - 1;
+	        const sortedBefore = a.slice(0, i).map((_, idx) => idx);
 	        steps.push({
 	            array: [...a],
 	            comparing: [i],
 	            swapping: [],
-	            sorted: [],
+	            sorted: sortedBefore,
 	            current: i,
-	            description: `Picking element a[${i}] = ${key} to insert into sorted portion`,
+	            subarray: { start: 0, end: i + 1 },
+	            description: `Pick a[${i}] = ${key} to insert into sorted portion [0..${i - 1}]`,
 	        });
 	        while (j >= 0 && a[j] > key) {
 	            steps.push({
 	                array: [...a],
-	                comparing: [j, j + 1],
+	                comparing: [j],
 	                swapping: [],
-	                sorted: [],
-	                current: j,
-	                description: `a[${j}] = ${a[j]} > ${key}, shifting right`,
+	                sorted: sortedBefore,
+	                current: j + 1,
+	                subarray: { start: j, end: i + 1 },
+	                description: `a[${j}] = ${a[j]} > key ${key}  →  shift a[${j}] right`,
 	            });
 	            a[j + 1] = a[j];
 	            steps.push({
 	                array: [...a],
 	                comparing: [],
 	                swapping: [j, j + 1],
-	                sorted: [],
-	                current: j + 1,
-	                description: `Shifted a[${j}] to position ${j + 1}`,
+	                sorted: sortedBefore,
+	                current: j,
+	                subarray: { start: j, end: i + 1 },
+	                description: `Shifted a[${j}] → a[${j + 1}]   (gap now at ${j})`,
 	            });
 	            j--;
 	        }
 	        if (j + 1 !== i) {
 	            a[j + 1] = key;
-	            steps.push({
-	                array: [...a],
-	                comparing: [],
-	                swapping: [],
-	                sorted: a.slice(0, i + 1).map((_, idx) => idx),
-	                current: j + 1,
-	                description: `Inserted ${key} at position ${j + 1}`,
-	            });
 	        }
+	        steps.push({
+	            array: [...a],
+	            comparing: [],
+	            swapping: [],
+	            sorted: a.slice(0, i + 1).map((_, idx) => idx),
+	            current: j + 1,
+	            subarray: { start: 0, end: i + 1 },
+	            description: `Inserted ${key} at position ${j + 1}  →  [0..${i}] now sorted`,
+	        });
 	    }
 	    steps.push({
 	        array: [...a],
@@ -38634,78 +38644,86 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	    const steps = [];
 	    const a = [...arr];
 	    const n = a.length;
+	    let heapifiedStart = n;
+	    function makeStep(opts) {
+	        return {
+	            array: [...a],
+	            comparing: [],
+	            swapping: [],
+	            sorted: [],
+	            current: -1,
+	            ...opts,
+	        };
+	    }
 	    function heapify(size, i) {
 	        let largest = i;
 	        const left = 2 * i + 1;
 	        const right = 2 * i + 2;
+	        const sorted = size === n
+	            ? Array.from({ length: n - heapifiedStart }, (_, k) => heapifiedStart + k)
+	            : Array.from({ length: n - size }, (_, k) => size + k);
 	        if (left < size) {
-	            steps.push({
-	                array: [...a],
+	            steps.push(makeStep({
 	                comparing: [left, largest],
-	                swapping: [],
-	                sorted: a.slice(size).map((_, idx) => size + idx),
+	                sorted,
 	                current: i,
+	                subarray: { start: 0, end: size },
 	                description: `Heapify: comparing a[${left}] = ${a[left]} with a[${largest}] = ${a[largest]}`,
-	            });
+	            }));
 	            if (a[left] > a[largest])
 	                largest = left;
 	        }
 	        if (right < size) {
-	            steps.push({
-	                array: [...a],
+	            steps.push(makeStep({
 	                comparing: [right, largest],
-	                swapping: [],
-	                sorted: a.slice(size).map((_, idx) => size + idx),
+	                sorted,
 	                current: i,
+	                subarray: { start: 0, end: size },
 	                description: `Heapify: comparing a[${right}] = ${a[right]} with a[${largest}] = ${a[largest]}`,
-	            });
+	            }));
 	            if (a[right] > a[largest])
 	                largest = right;
 	        }
 	        if (largest !== i) {
 	            [a[i], a[largest]] = [a[largest], a[i]];
-	            steps.push({
-	                array: [...a],
-	                comparing: [],
+	            steps.push(makeStep({
 	                swapping: [i, largest],
-	                sorted: a.slice(size).map((_, idx) => size + idx),
+	                sorted,
 	                current: i,
+	                subarray: { start: 0, end: size },
 	                description: `Swapped a[${i}] with a[${largest}]: ${a[i]} ↔ ${a[largest]}`,
-	            });
+	            }));
 	            heapify(size, largest);
 	        }
 	    }
+	    // Build max-heap
 	    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-	        steps.push({
-	            array: [...a],
-	            comparing: [],
-	            swapping: [],
-	            sorted: [],
+	        heapifiedStart = i + 1;
+	        steps.push(makeStep({
+	            sorted: Array.from({ length: n - heapifiedStart }, (_, k) => heapifiedStart + k),
 	            current: i,
+	            subarray: { start: heapifiedStart, end: n },
 	            description: `Building max-heap: heapifying at index ${i}`,
-	        });
+	        }));
 	        heapify(n, i);
 	    }
+	    // Extract phase
 	    for (let i = n - 1; i > 0; i--) {
 	        [a[0], a[i]] = [a[i], a[0]];
-	        steps.push({
-	            array: [...a],
-	            comparing: [],
+	        steps.push(makeStep({
 	            swapping: [0, i],
-	            sorted: a.slice(i).map((_, idx) => i + idx),
+	            sorted: Array.from({ length: n - i }, (_, k) => i + k),
 	            current: 0,
+	            subarray: { start: 0, end: i },
 	            description: `Extracted max: swapped a[0] with a[${i}]`,
-	        });
+	        }));
 	        heapify(i, 0);
 	    }
-	    steps.push({
-	        array: [...a],
-	        comparing: [],
-	        swapping: [],
+	    steps.push(makeStep({
 	        sorted: a.map((_, idx) => idx),
 	        current: -1,
 	        description: 'Array is fully sorted!',
-	    });
+	    }));
 	    return steps;
 	}
 	function heapSort(arr) {
@@ -38777,7 +38795,938 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	};
 
 	function generateRandomArray(size, min = 5, max = 100) {
-	    return Array.from({ length: size }, () => Math.floor(Math.random() * (max - min + 1)) + min);
+	    const pool = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+	    for (let i = pool.length - 1; i > 0; i--) {
+	        const j = Math.floor(Math.random() * (i + 1));
+	        [pool[i], pool[j]] = [pool[j], pool[i]];
+	    }
+	    return pool.slice(0, Math.min(size, pool.length));
+	}
+	function generateNearlySortedArray(size, min = 5, max = 100) {
+	    const base = generateRandomArray(size, min, max).sort((a, b) => a - b);
+	    const swaps = Math.max(1, Math.floor(size * 0.15));
+	    for (let i = 0; i < swaps; i++) {
+	        const idx1 = Math.floor(Math.random() * size);
+	        const idx2 = Math.floor(Math.random() * size);
+	        [base[idx1], base[idx2]] = [base[idx2], base[idx1]];
+	    }
+	    return base;
+	}
+	function generateReverseSortedArray(size, min = 5, max = 100) {
+	    return generateRandomArray(size, min, max).sort((a, b) => b - a);
+	}
+	function generateSortedArray(size, min = 5, max = 100) {
+	    return generateRandomArray(size, min, max).sort((a, b) => a - b);
+	}
+
+	function buildTree(arr, start, end, depth) {
+	    const id = `${start}-${end}`;
+	    const values = arr.slice(start, end);
+	    if (end - start <= 1) {
+	        return { node: { id, start, end, values, depth, children: null } };
+	    }
+	    const mid = Math.floor((start + end) / 2);
+	    const left = buildTree(arr, start, mid, depth + 1);
+	    const right = buildTree(arr, mid, end, depth + 1);
+	    return {
+	        node: { id, start, end, values, depth, children: [left.node.id, right.node.id] },
+	        left,
+	        right,
+	    };
+	}
+	function flattenTree(builder) {
+	    const result = [builder.node];
+	    if (builder.left)
+	        result.push(...flattenTree(builder.left));
+	    if (builder.right)
+	        result.push(...flattenTree(builder.right));
+	    return result;
+	}
+	function mergeSorted(a, b) {
+	    const result = [];
+	    let i = 0, j = 0;
+	    while (i < a.length && j < b.length) {
+	        if (a[i] <= b[j])
+	            result.push(a[i++]);
+	        else
+	            result.push(b[j++]);
+	    }
+	    return [...result, ...a.slice(i), ...b.slice(j)];
+	}
+	function makeFrame(allNodes, nodeValues, nodeStates, description) {
+	    return {
+	        nodes: allNodes.map(n => ({
+	            id: n.id,
+	            values: [...(nodeValues.get(n.id) ?? n.values)],
+	            state: nodeStates.get(n.id) ?? 'hidden',
+	        })),
+	        description,
+	    };
+	}
+	function generateMergeSortDiagram(arr) {
+	    if (arr.length === 0)
+	        return { allNodes: [], frames: [] };
+	    const tree = buildTree(arr, 0, arr.length, 0);
+	    const allNodes = flattenTree(tree);
+	    const frames = [];
+	    const nodeValues = new Map();
+	    const nodeStates = new Map();
+	    for (const n of allNodes) {
+	        nodeValues.set(n.id, [...n.values]);
+	        nodeStates.set(n.id, 'hidden');
+	    }
+	    function revealPreOrder(builder) {
+	        nodeStates.set(builder.node.id, 'dividing');
+	        const desc = builder.node.children
+	            ? `Divide [${builder.node.values}] → [` +
+	                `${builder.left.node.values}] and [${builder.right.node.values}]`
+	            : `Single element [${builder.node.values}] \u2014 base case`;
+	        frames.push(makeFrame(allNodes, nodeValues, nodeStates, desc));
+	        nodeStates.set(builder.node.id, 'done');
+	        if (builder.left)
+	            revealPreOrder(builder.left);
+	        if (builder.right)
+	            revealPreOrder(builder.right);
+	    }
+	    revealPreOrder(tree);
+	    function mergePostOrder(builder) {
+	        if (!builder.left || !builder.right)
+	            return;
+	        mergePostOrder(builder.left);
+	        mergePostOrder(builder.right);
+	        const leftVals = nodeValues.get(builder.left.node.id);
+	        const rightVals = nodeValues.get(builder.right.node.id);
+	        const merged = mergeSorted(leftVals, rightVals);
+	        nodeValues.set(builder.node.id, merged);
+	        nodeStates.set(builder.node.id, 'merging');
+	        frames.push(makeFrame(allNodes, nodeValues, nodeStates, `Merge [${leftVals}] + [${rightVals}] \u2192 [${merged}]`));
+	        nodeStates.set(builder.node.id, 'done');
+	    }
+	    mergePostOrder(tree);
+	    nodeStates.set(tree.node.id, 'done');
+	    frames.push(makeFrame(allNodes, nodeValues, nodeStates, `Sorted array: [${nodeValues.get(tree.node.id)}]`));
+	    return { allNodes, frames };
+	}
+
+	const STATE_STYLES = {
+	    dividing: { bg: 'rgba(59,130,246,0.12)', border: '#3b82f6', text: 'var(--text)' },
+	    merging: { bg: 'rgba(245,158,11,0.12)', border: '#f59e0b', text: 'var(--text)' },
+	    done: { bg: 'rgba(34,197,94,0.15)', border: '#22c55e', text: 'var(--text)' },
+	    hidden: { bg: 'transparent', border: 'transparent', text: 'transparent' },
+	};
+	const MINI_BAR_COLORS = {
+	    comparing: '#f59e0b',
+	    swapping: '#ef4444',
+	    sorted: '#22c55e',
+	};
+	const NODE_DEFAULT_COLORS = {
+	    dividing: 'rgba(59,130,246,0.35)',
+	    merging: 'rgba(245,158,11,0.35)',
+	    done: 'rgba(34,197,94,0.35)',
+	};
+	function getMiniColor(globalIdx, step, nodeState) {
+	    if (!step)
+	        return NODE_DEFAULT_COLORS[nodeState] ?? 'var(--accent)';
+	    if (step.sorted.includes(globalIdx))
+	        return MINI_BAR_COLORS.sorted;
+	    if (step.swapping.includes(globalIdx))
+	        return MINI_BAR_COLORS.swapping;
+	    if (step.comparing.includes(globalIdx))
+	        return MINI_BAR_COLORS.comparing;
+	    return NODE_DEFAULT_COLORS[nodeState] ?? 'var(--accent)';
+	}
+	function MergeSortDiagram({ array, currentStep, step }) {
+	    const diagramData = reactExports.useMemo(() => generateMergeSortDiagram(array), [array]);
+	    const { allNodes, frames } = diagramData;
+	    const frameIndex = Math.min(currentStep, Math.max(frames.length - 1, 0));
+	    const frame = frames[frameIndex] ?? null;
+	    const frameMap = reactExports.useMemo(() => {
+	        const m = new Map();
+	        if (frame) {
+	            for (const fn of frame.nodes) {
+	                m.set(fn.id, fn);
+	            }
+	        }
+	        return m;
+	    }, [frame]);
+	    const prevVisibleRef = reactExports.useRef(new Set());
+	    const prevValuesRef = reactExports.useRef(new Map());
+	    const visibleNow = reactExports.useMemo(() => {
+	        const s = new Set();
+	        if (frame) {
+	            for (const fn of frame.nodes) {
+	                if (fn.state !== 'hidden')
+	                    s.add(fn.id);
+	            }
+	        }
+	        return s;
+	    }, [frame]);
+	    const newlyVisible = reactExports.useMemo(() => {
+	        const nv = new Set();
+	        for (const id of visibleNow) {
+	            if (!prevVisibleRef.current.has(id))
+	                nv.add(id);
+	        }
+	        return nv;
+	    }, [visibleNow]);
+	    function renderNode(nodeId, depth) {
+	        const node = allNodes.find(n => n.id === nodeId);
+	        const fn = frameMap.get(nodeId);
+	        if (!node || !fn || fn.state === 'hidden')
+	            return null;
+	        const style = STATE_STYLES[fn.state];
+	        const isNew = newlyVisible.has(nodeId);
+	        const isActive = fn.state === 'dividing' || fn.state === 'merging';
+	        const isMerging = fn.state === 'merging';
+	        const valKey = fn.values.join(',');
+	        const prevVal = prevValuesRef.current.get(nodeId);
+	        const valChanged = prevVal !== undefined && prevVal !== valKey;
+	        prevValuesRef.current.set(nodeId, valKey);
+	        const children = node.children?.filter(c => {
+	            const cf = frameMap.get(c);
+	            return cf && cf.state !== 'hidden';
+	        });
+	        const staggerDelay = `${depth * 60}ms`;
+	        return (jsxRuntimeExports.jsxs("div", { style: {
+	                display: 'flex',
+	                flexDirection: 'column',
+	                alignItems: 'center',
+	                flexShrink: 0,
+	            }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                        '--border-color': style.border,
+	                        background: style.bg,
+	                        border: `2px solid ${style.border}`,
+	                        borderRadius: '8px',
+	                        padding: '6px 8px',
+	                        transition: 'background 0.25s, border 0.25s, box-shadow 0.25s',
+	                        boxShadow: isActive
+	                            ? `0 0 0 3px ${style.border}44, 0 0 16px ${style.border}22`
+	                            : '0 1px 3px rgba(0,0,0,0.1)',
+	                        animation: isNew
+	                            ? `nodeEnter 0.35s ease-out both`
+	                            : isActive
+	                                ? `nodePulse 1.8s ease-in-out infinite`
+	                                : 'none',
+	                        animationDelay: isNew ? staggerDelay : '0s',
+	                    }, children: jsxRuntimeExports.jsx("div", { style: {
+	                            position: 'relative',
+	                            overflow: 'hidden',
+	                        }, children: jsxRuntimeExports.jsx("div", { style: {
+	                                display: 'flex',
+	                                gap: '3px',
+	                                animation: valChanged ? 'valueSwapIn 0.3s ease-out' : 'none',
+	                            }, children: fn.values.map((val, i) => {
+	                                const globalIdx = node.start + i;
+	                                const miniColor = getMiniColor(globalIdx, step, fn.state);
+	                                const isActiveItem = step && (step.comparing.includes(globalIdx) ||
+	                                    step.swapping.includes(globalIdx) ||
+	                                    step.sorted.includes(globalIdx));
+	                                return (jsxRuntimeExports.jsx("div", { style: {
+	                                        width: '20px',
+	                                        height: '24px',
+	                                        display: 'flex',
+	                                        alignItems: 'center',
+	                                        justifyContent: 'center',
+	                                        background: miniColor,
+	                                        borderRadius: '3px',
+	                                        fontSize: '0.55rem',
+	                                        fontWeight: 700,
+	                                        color: '#fff',
+	                                        transition: 'background 0.15s, box-shadow 0.15s',
+	                                        boxShadow: isActiveItem
+	                                            ? '0 0 0 1px rgba(255,255,255,0.6)'
+	                                            : 'none',
+	                                        flexShrink: 0,
+	                                    }, children: val }, i));
+	                            }) }, valChanged ? valKey + '-new' : valKey) }) }), children && children.length > 0 && (jsxRuntimeExports.jsxs("div", { style: {
+	                        display: 'flex',
+	                        flexDirection: 'column',
+	                        alignItems: 'center',
+	                        width: '100%',
+	                    }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                width: '2px',
+	                                height: '14px',
+	                                background: isMerging ? '#f59e0b' : 'var(--border)',
+	                                transformOrigin: 'top',
+	                                animation: isNew
+	                                    ? 'lineGrowVertical 0.3s ease-out'
+	                                    : isMerging
+	                                        ? 'linePulse 0.8s ease-in-out infinite'
+	                                        : 'none',
+	                                animationDelay: isNew ? staggerDelay : '0s',
+	                            } }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '40px', position: 'relative' }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                        position: 'absolute',
+	                                        top: '0',
+	                                        left: '0',
+	                                        right: '0',
+	                                        height: '2px',
+	                                        background: isMerging ? '#f59e0b' : 'var(--border)',
+	                                        transformOrigin: 'center',
+	                                        animation: isNew
+	                                            ? 'lineGrowHorizontal 0.3s ease-out'
+	                                            : isMerging
+	                                                ? 'linePulse 0.8s ease-in-out infinite'
+	                                                : 'none',
+	                                        animationDelay: isNew ? staggerDelay : '0s',
+	                                    } }), children.map(childId => (jsxRuntimeExports.jsxs("div", { style: {
+	                                        display: 'flex',
+	                                        flexDirection: 'column',
+	                                        alignItems: 'center',
+	                                    }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                                width: '2px',
+	                                                height: '14px',
+	                                                background: isMerging ? '#f59e0b' : 'var(--border)',
+	                                                transformOrigin: 'top',
+	                                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                                animationDelay: staggerDelay,
+	                                            } }), renderNode(childId, depth + 1)] }, childId)))] })] }))] }, nodeId));
+	    }
+	    prevVisibleRef.current = visibleNow;
+	    if (!frame || allNodes.length === 0) {
+	        return (jsxRuntimeExports.jsx("div", { style: {
+	                padding: '2rem',
+	                textAlign: 'center',
+	                color: 'var(--text-secondary)',
+	            }, children: "No data to display" }));
+	    }
+	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("div", { style: {
+	                    width: '100%',
+	                    overflowX: 'auto',
+	                    overflowY: 'auto',
+	                    padding: '1.5rem 1rem',
+	                    background: 'var(--bg)',
+	                    borderRadius: '0.5rem',
+	                    border: '1px solid var(--border)',
+	                    minHeight: '250px',
+	                    display: 'flex',
+	                    justifyContent: 'center',
+	                }, children: renderNode(allNodes[0].id, 0) }), frame && (jsxRuntimeExports.jsx("p", { style: {
+	                    marginTop: '0.75rem',
+	                    fontSize: '0.9rem',
+	                    color: 'var(--text)',
+	                    textAlign: 'center',
+	                    fontWeight: 500,
+	                }, children: frame.description }))] }));
+	}
+
+	function getNodeColor(idx, step) {
+	    if (!step)
+	        return 'var(--accent)';
+	    if (step.sorted.includes(idx))
+	        return '#22c55e';
+	    if (step.swapping.includes(idx))
+	        return '#ef4444';
+	    if (step.comparing.includes(idx))
+	        return '#f59e0b';
+	    if (step.current === idx)
+	        return '#3b82f6';
+	    if (step.subarray && (idx < step.subarray.start || idx >= step.subarray.end))
+	        return 'var(--border)';
+	    return 'var(--accent)';
+	}
+	function HeapSortDiagram({ array, step }) {
+	    const prevValuesRef = reactExports.useRef(new Map());
+	    const initializedRef = reactExports.useRef(false);
+	    const hasSorted = (step?.sorted.length ?? 0) > 0;
+	    const subEnd = step?.subarray?.end;
+	    const isBuildingPhase = hasSorted && subEnd === array.length;
+	    const isExtractPhase = subEnd !== undefined && subEnd < array.length;
+	    function renderHeap(index, depth) {
+	        if (index >= array.length)
+	            return null;
+	        const left = 2 * index + 1;
+	        const right = 2 * index + 2;
+	        const hasChildren = left < array.length;
+	        const color = getNodeColor(index, step);
+	        const isActive = step && (step.comparing.includes(index) ||
+	            step.swapping.includes(index) ||
+	            step.current === index);
+	        const isSorted = step?.sorted.includes(index) ?? false;
+	        const isOutsideHeap = step?.subarray && (index < step.subarray.start || index >= step.subarray.end);
+	        const isHeapBoundary = isBuildingPhase && index === step?.subarray?.start;
+	        const staggerDelay = `${depth * 60}ms`;
+	        const prevVal = prevValuesRef.current.get(index);
+	        const valChanged = initializedRef.current && prevVal !== undefined && prevVal !== array[index];
+	        prevValuesRef.current.set(index, array[index]);
+	        return (jsxRuntimeExports.jsxs("div", { style: {
+	                display: 'flex',
+	                flexDirection: 'column',
+	                alignItems: 'center',
+	                flexShrink: 0,
+	                opacity: isOutsideHeap && isSorted ? 0.5 : 1,
+	                position: 'relative',
+	            }, children: [isHeapBoundary && (jsxRuntimeExports.jsx("div", { style: {
+	                        position: 'absolute',
+	                        top: '-18px',
+	                        fontSize: '0.55rem',
+	                        fontWeight: 700,
+	                        color: '#22c55e',
+	                        background: 'rgba(34,197,94,0.1)',
+	                        padding: '1px 6px',
+	                        borderRadius: '4px',
+	                        whiteSpace: 'nowrap',
+	                        textTransform: 'uppercase',
+	                        letterSpacing: '0.04em',
+	                    }, children: "\u2713 Heap" })), jsxRuntimeExports.jsx("div", { style: {
+	                        '--border-color': color,
+	                        background: `${color}18`,
+	                        border: `2px solid ${isActive
+                            ? color
+                            : isSorted
+                                ? '#22c55e'
+                                : isOutsideHeap
+                                    ? 'var(--border)'
+                                    : isHeapBoundary
+                                        ? '#22c55e'
+                                        : color}`,
+	                        borderRadius: '50%',
+	                        width: '36px',
+	                        height: '36px',
+	                        display: 'flex',
+	                        alignItems: 'center',
+	                        justifyContent: 'center',
+	                        color: isOutsideHeap ? 'var(--text-secondary)' : '#fff',
+	                        fontWeight: 700,
+	                        fontSize: '0.75rem',
+	                        fontFamily: 'monospace',
+	                        transition: 'background 0.2s, border 0.2s, box-shadow 0.2s, opacity 0.3s',
+	                        boxShadow: isActive
+	                            ? `0 0 0 3px ${color}44, 0 0 16px ${color}22`
+	                            : isSorted
+	                                ? isBuildingPhase
+	                                    ? '0 0 0 2px rgba(34,197,94,0.25)'
+	                                    : '0 0 0 2px rgba(34,197,94,0.15)'
+	                                : '0 1px 3px rgba(0,0,0,0.1)',
+	                        animation: isActive
+	                            ? `nodePulse 1.8s ease-in-out infinite`
+	                            : `nodeEnter 0.35s ease-out both`,
+	                        animationDelay: isActive ? '0s' : staggerDelay,
+	                        position: 'relative',
+	                        zIndex: isActive ? 2 : 1,
+	                    }, children: jsxRuntimeExports.jsx("span", { style: {
+	                            animation: valChanged ? 'valueSwapIn 0.3s ease-out' : 'none',
+	                        }, children: array[index] }, valChanged ? `v-${index}-${array[index]}` : undefined) }), hasChildren && (jsxRuntimeExports.jsxs("div", { style: {
+	                        display: 'flex',
+	                        flexDirection: 'column',
+	                        alignItems: 'center',
+	                        width: '100%',
+	                    }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                width: '2px',
+	                                height: '12px',
+	                                background: 'var(--border)',
+	                                transformOrigin: 'top',
+	                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                animationDelay: staggerDelay,
+	                            } }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: `${Math.max(12, 36 - depth * 4)}px`, position: 'relative' }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                        position: 'absolute',
+	                                        top: '0',
+	                                        left: '0',
+	                                        right: '0',
+	                                        height: '2px',
+	                                        background: 'var(--border)',
+	                                        transformOrigin: 'center',
+	                                        animation: 'lineGrowHorizontal 0.3s ease-out',
+	                                        animationDelay: staggerDelay,
+	                                    } }), jsxRuntimeExports.jsxs("div", { style: {
+	                                        display: 'flex',
+	                                        flexDirection: 'column',
+	                                        alignItems: 'center',
+	                                    }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                                width: '2px',
+	                                                height: '12px',
+	                                                background: 'var(--border)',
+	                                                transformOrigin: 'top',
+	                                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                                animationDelay: staggerDelay,
+	                                            } }), renderHeap(left, depth + 1)] }), right < array.length && (jsxRuntimeExports.jsxs("div", { style: {
+	                                        display: 'flex',
+	                                        flexDirection: 'column',
+	                                        alignItems: 'center',
+	                                    }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                                width: '2px',
+	                                                height: '12px',
+	                                                background: 'var(--border)',
+	                                                transformOrigin: 'top',
+	                                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                                animationDelay: staggerDelay,
+	                                            } }), renderHeap(right, depth + 1)] }))] })] }))] }, index));
+	    }
+	    initializedRef.current = true;
+	    if (array.length === 0) {
+	        return (jsxRuntimeExports.jsx("div", { style: { padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }, children: "No data to display" }));
+	    }
+	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: {
+	                    fontSize: '0.85rem',
+	                    fontWeight: 600,
+	                    marginBottom: '0.5rem',
+	                    textAlign: 'center',
+	                    color: isBuildingPhase ? '#3b82f6' : isExtractPhase ? '#f59e0b' : 'var(--text-secondary)',
+	                }, children: [isBuildingPhase && '🔨 Building Max-Heap', isExtractPhase && '📤 Extracting Max Elements', !isBuildingPhase && !isExtractPhase && '🌳 Heap Tree'] }), jsxRuntimeExports.jsx("div", { style: {
+	                    width: '100%',
+	                    overflowX: 'auto',
+	                    overflowY: 'auto',
+	                    padding: '1.5rem 1rem',
+	                    background: 'var(--bg)',
+	                    borderRadius: '0.5rem',
+	                    border: '1px solid var(--border)',
+	                    minHeight: '200px',
+	                    display: 'flex',
+	                    justifyContent: 'center',
+	                }, children: renderHeap(0, 0) }), step && (jsxRuntimeExports.jsx("p", { style: {
+	                    marginTop: '0.75rem',
+	                    fontSize: '0.9rem',
+	                    color: 'var(--text)',
+	                    textAlign: 'center',
+	                    fontWeight: 500,
+	                }, children: step.description }))] }));
+	}
+
+	const PIVOT_BG = '#8b5cf6';
+	const LEQ_BG = 'rgba(34,197,94,0.18)';
+	const GT_BG = 'rgba(249,115,22,0.18)';
+	const COMPARING_BG = 'rgba(245,158,11,0.3)';
+	const SWAPPING_BG = 'rgba(239,68,68,0.3)';
+	const SORTED_BG = '#22c55e';
+	const LEQ_BORDER = '#22c55e';
+	const GT_BORDER = '#f97316';
+	function isContained(child, parent) {
+	    return parent.start <= child.start && child.end <= parent.end &&
+	        (parent.start !== child.start || parent.end !== child.end);
+	}
+	function buildPartitionTree(steps, currentStep) {
+	    const raw = [];
+	    for (let i = 0; i <= currentStep; i++) {
+	        const s = steps[i];
+	        if (!s.subarray || s.pivot === undefined)
+	            continue;
+	        if (s.description.startsWith('Partitioning:')) {
+	            raw.push({
+	                start: s.subarray.start,
+	                end: s.subarray.end,
+	                pivotIdx: s.pivot,
+	                pivotVal: s.array[s.pivot],
+	                stepIndex: i,
+	                completed: false,
+	            });
+	        }
+	        else if (s.description.includes('is in its final position')) {
+	            for (let p = raw.length - 1; p >= 0; p--) {
+	                if (!raw[p].completed && raw[p].start === s.subarray.start && raw[p].end === s.subarray.end) {
+	                    raw[p].completed = true;
+	                    break;
+	                }
+	            }
+	        }
+	    }
+	    const sorted = [...raw].sort((a, b) => a.stepIndex - b.stepIndex);
+	    const roots = [];
+	    function findParentFor(node, candidates) {
+	        for (const c of candidates) {
+	            if (isContained(node, c)) {
+	                const child = findParentFor(node, c.children);
+	                return child ?? c;
+	            }
+	        }
+	        return null;
+	    }
+	    for (const node of sorted) {
+	        const parent = findParentFor(node, roots);
+	        const treeNode = {
+	            ...node,
+	            depth: parent ? parent.depth + 1 : 0,
+	            children: [],
+	        };
+	        if (parent) {
+	            parent.children.push(treeNode);
+	        }
+	        else {
+	            roots.push(treeNode);
+	        }
+	    }
+	    return roots;
+	}
+	function renderPartitionNode(node, currentStep, isCurrent) {
+	    const isActive = !node.completed && node.stepIndex <= currentStep;
+	    return (jsxRuntimeExports.jsxs("div", { style: {
+	            display: 'flex',
+	            flexDirection: 'column',
+	            alignItems: 'center',
+	            marginLeft: node.depth * 20,
+	        }, children: [jsxRuntimeExports.jsxs("div", { style: {
+	                    display: 'inline-flex',
+	                    alignItems: 'center',
+	                    gap: '6px',
+	                    padding: '3px 10px',
+	                    borderRadius: '6px',
+	                    background: node.completed
+	                        ? 'rgba(34,197,94,0.12)'
+	                        : isActive
+	                            ? 'rgba(59,130,246,0.12)'
+	                            : 'transparent',
+	                    border: `2px solid ${node.completed
+                        ? '#22c55e'
+                        : isActive
+                            ? '#3b82f6'
+                            : 'var(--border)'}`,
+	                    fontSize: '0.75rem',
+	                    fontWeight: node.completed || isActive ? 700 : 500,
+	                    color: node.completed
+	                        ? '#22c55e'
+	                        : isActive
+	                            ? '#3b82f6'
+	                            : 'var(--text-secondary)',
+	                    transition: 'all 0.25s',
+	                }, children: [jsxRuntimeExports.jsxs("span", { children: ["[", node.start, "..", node.end - 1, "]"] }), jsxRuntimeExports.jsxs("span", { style: { fontWeight: 700, color: PIVOT_BG }, children: ["pivot: ", node.pivotVal] }), node.completed && jsxRuntimeExports.jsx("span", { style: { color: '#22c55e' }, children: "\u2713" })] }), node.children.length > 0 && (jsxRuntimeExports.jsx("div", { style: {
+	                    display: 'flex',
+	                    flexDirection: 'column',
+	                    alignItems: 'center',
+	                    gap: '6px',
+	                    marginTop: '6px',
+	                }, children: node.children.map(child => renderPartitionNode(child, currentStep)) }))] }, `p-${node.start}-${node.end}`));
+	}
+	function QuickSortDiagram({ array, step, steps, currentStep }) {
+	    const partitionTree = reactExports.useMemo(() => {
+	        if (!steps || currentStep === undefined)
+	            return [];
+	        return buildPartitionTree(steps, currentStep);
+	    }, [steps, currentStep]);
+	    if (!step || step.pivot === undefined || !step.subarray) {
+	        return (jsxRuntimeExports.jsx("div", { style: {
+	                padding: '1rem',
+	                textAlign: 'center',
+	                color: 'var(--text-secondary)',
+	                fontSize: '0.85rem',
+	                background: 'var(--bg)',
+	                borderRadius: '0.5rem',
+	                border: '1px solid var(--border)',
+	            }, children: "No active partition \u2014 waiting for partitioning step" }));
+	    }
+	    const { start, end } = step.subarray;
+	    const pivotIdx = step.pivot;
+	    const pivotVal = array[pivotIdx];
+	    const subarray = array.slice(start, end);
+	    const j = step.comparing.length > 0
+	        ? step.comparing[0]
+	        : step.current >= 0
+	            ? step.current
+	            : null;
+	    let i = start - 1;
+	    if (j !== null && j > start) {
+	        for (let k = start; k < j; k++) {
+	            if (k !== pivotIdx && array[k] <= pivotVal) {
+	                i = k;
+	            }
+	        }
+	    }
+	    function getBoxStyle(globalIdx, val, pivotIdx, pivotVal, pivotIsPlaced, st) {
+	        if (st.sorted.includes(globalIdx)) {
+	            return {
+	                background: SORTED_BG,
+	                border: `2px solid #1a8a47`,
+	                color: '#fff',
+	                fontWeight: 700,
+	            };
+	        }
+	        if (st.swapping.includes(globalIdx)) {
+	            return {
+	                background: SWAPPING_BG,
+	                border: `2px solid #ef4444`,
+	                color: '#ef4444',
+	                fontWeight: 700,
+	            };
+	        }
+	        if (st.comparing.includes(globalIdx)) {
+	            return {
+	                background: COMPARING_BG,
+	                border: `2px solid #f59e0b`,
+	                color: '#f59e0b',
+	                fontWeight: 700,
+	                boxShadow: '0 0 10px rgba(245,158,11,0.5)',
+	            };
+	        }
+	        if (globalIdx === pivotIdx) {
+	            return {
+	                background: PIVOT_BG,
+	                border: `2px solid #7c3aed`,
+	                color: '#fff',
+	                fontWeight: 700,
+	            };
+	        }
+	        if (val <= pivotVal) {
+	            return {
+	                background: LEQ_BG,
+	                border: `2px solid ${LEQ_BORDER}`,
+	                color: '#22c55e',
+	                fontWeight: 600,
+	            };
+	        }
+	        return {
+	            background: GT_BG,
+	            border: `2px solid ${GT_BORDER}`,
+	            color: '#f97316',
+	            fontWeight: 600,
+	        };
+	    }
+	    const pivotIsPlaced = step.description.includes('Placed pivot') || step.description.includes('final position');
+	    return (jsxRuntimeExports.jsxs("div", { style: {
+	            background: 'var(--bg)',
+	            borderRadius: '0.5rem',
+	            border: '1px solid var(--border)',
+	            padding: '1rem',
+	            marginBottom: '1rem',
+	        }, children: [jsxRuntimeExports.jsxs("div", { style: {
+	                    display: 'flex',
+	                    alignItems: 'center',
+	                    justifyContent: 'space-between',
+	                    marginBottom: '0.75rem',
+	                    flexWrap: 'wrap',
+	                    gap: '0.5rem',
+	                }, children: [jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)' }, children: ["Partition of [", start, "..", end - 1, "]"] }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.8rem', color: PIVOT_BG, fontWeight: 700 }, children: ["Pivot: a[", pivotIdx, "] = ", pivotVal] })] }), jsxRuntimeExports.jsx("div", { style: {
+	                    display: 'flex',
+	                    alignItems: 'center',
+	                    justifyContent: 'center',
+	                    gap: '6px',
+	                    padding: '0.5rem 0',
+	                    position: 'relative',
+	                }, children: subarray.map((val, idx) => {
+	                    const globalIdx = start + idx;
+	                    const style = getBoxStyle(globalIdx, val, pivotIdx, pivotVal, pivotIsPlaced, step);
+	                    const isFinalPivot = globalIdx === pivotIdx && pivotIsPlaced;
+	                    return (jsxRuntimeExports.jsxs("div", { style: {
+	                            width: '44px',
+	                            height: '44px',
+	                            display: 'flex',
+	                            flexDirection: 'column',
+	                            alignItems: 'center',
+	                            justifyContent: 'center',
+	                            borderRadius: '8px',
+	                            fontSize: '0.9rem',
+	                            position: 'relative',
+	                            transition: 'background 0.2s, border 0.2s, box-shadow 0.2s, transform 0.25s',
+	                            transform: isFinalPivot ? 'translateY(-4px)' : 'none',
+	                            ...style,
+	                        }, children: [val, globalIdx === pivotIdx && (jsxRuntimeExports.jsx("span", { style: {
+	                                    position: 'absolute',
+	                                    bottom: '-16px',
+	                                    fontSize: '0.5rem',
+	                                    fontWeight: 700,
+	                                    color: PIVOT_BG,
+	                                    textTransform: 'uppercase',
+	                                    letterSpacing: '0.05em',
+	                                    whiteSpace: 'nowrap',
+	                                }, children: "Pivot" }))] }, globalIdx));
+	                }) }), jsxRuntimeExports.jsx("div", { style: {
+	                    display: 'flex',
+	                    alignItems: 'center',
+	                    justifyContent: 'center',
+	                    gap: '6px',
+	                    minHeight: '20px',
+	                    marginTop: '4px',
+	                }, children: subarray.map((_, idx) => {
+	                    const globalIdx = start + idx;
+	                    const pointers = [];
+	                    if (globalIdx === i && i >= start)
+	                        pointers.push('i');
+	                    if (globalIdx === j)
+	                        pointers.push('j');
+	                    return (jsxRuntimeExports.jsx("div", { style: {
+	                            width: '44px',
+	                            textAlign: 'center',
+	                            fontSize: '0.65rem',
+	                            fontWeight: 700,
+	                            color: globalIdx === j ? '#f59e0b' : globalIdx === i ? '#3b82f6' : 'transparent',
+	                            fontFamily: 'monospace',
+	                        }, children: pointers.join('/') }, `ptr-${globalIdx}`));
+	                }) }), jsxRuntimeExports.jsx("div", { style: {
+	                    display: 'flex',
+	                    alignItems: 'center',
+	                    justifyContent: 'center',
+	                    gap: '6px',
+	                    marginTop: '2px',
+	                }, children: subarray.map((_, idx) => {
+	                    const globalIdx = start + idx;
+	                    const isLeq = globalIdx <= i && i >= start;
+	                    const isGt = j !== null && globalIdx > i && globalIdx < j;
+	                    const isPivot = globalIdx === pivotIdx;
+	                    let label = '';
+	                    let labelColor = 'transparent';
+	                    if (isLeq) {
+	                        label = '≤';
+	                        labelColor = '#22c55e';
+	                    }
+	                    else if (isGt) {
+	                        label = '>';
+	                        labelColor = '#f97316';
+	                    }
+	                    else if (isPivot && pivotIsPlaced) {
+	                        label = '✓';
+	                        labelColor = '#22c55e';
+	                    }
+	                    return (jsxRuntimeExports.jsx("div", { style: {
+	                            width: '44px',
+	                            textAlign: 'center',
+	                            fontSize: '0.6rem',
+	                            fontWeight: 700,
+	                            color: labelColor,
+	                        }, children: label }, `lbl-${globalIdx}`));
+	                }) }), partitionTree.length > 0 && (jsxRuntimeExports.jsxs("div", { style: { marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }, children: [jsxRuntimeExports.jsx("div", { style: { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }, children: "Recursive Partitions" }), jsxRuntimeExports.jsx("div", { style: {
+	                            display: 'flex',
+	                            flexDirection: 'column',
+	                            alignItems: 'center',
+	                            gap: '6px',
+	                        }, children: partitionTree.map(root => renderPartitionNode(root, currentStep ?? 0)) })] })), jsxRuntimeExports.jsx("div", { style: {
+	                    marginTop: '0.75rem',
+	                    fontSize: '0.85rem',
+	                    color: 'var(--text)',
+	                    textAlign: 'center',
+	                    fontWeight: 500,
+	                    padding: '0.375rem 0.75rem',
+	                    background: 'var(--surface)',
+	                    borderRadius: '6px',
+	                    border: '1px solid var(--border)',
+	                }, children: step.description })] }));
+	}
+
+	const BAR_W = 48;
+	const BAR_GAP = 4;
+	function getBoxState(idx, step, gapIdx) {
+	    if (step.sorted.includes(idx) && idx !== gapIdx)
+	        return 'sorted';
+	    if (step.swapping.includes(idx))
+	        return 'swapping';
+	    if (step.comparing.includes(idx))
+	        return 'comparing';
+	    if (idx === gapIdx)
+	        return 'gap';
+	    return 'default';
+	}
+	const BOX_COLORS = {
+	    sorted: { bg: '#22c55e', border: '#1a8a47', text: '#fff' },
+	    swapping: { bg: 'rgba(239,68,68,0.35)', border: '#ef4444', text: '#ef4444' },
+	    comparing: { bg: 'rgba(245,158,11,0.35)', border: '#f59e0b', text: '#f59e0b' },
+	    gap: { bg: 'rgba(59,130,246,0.12)', border: '#3b82f6', text: '#3b82f6' },
+	    default: { bg: 'var(--accent)', border: 'transparent', text: '#fff' },
+	};
+	const BOX_ANIMATIONS = {
+	    comparing: 'comparePulse 0.8s ease-in-out infinite',
+	    swapping: 'shiftPush 0.45s ease-in-out',
+	    gap: 'gapPulse 0.8s ease-in-out infinite',
+	};
+	function getBoxAnimState(idx, step, gapIdx) {
+	    const inSwap = step.swapping.includes(idx);
+	    const inCompare = step.comparing.includes(idx);
+	    const isGap = idx === gapIdx;
+	    const desc = step.description.toLowerCase();
+	    if (inSwap && (idx === step.swapping[0] || idx === step.swapping[1]))
+	        return 'swapping';
+	    if (inCompare && isGap)
+	        return 'gap';
+	    if (inCompare)
+	        return 'comparing';
+	    if (isGap && desc.includes('insert'))
+	        return 'none';
+	    if (isGap)
+	        return 'gap';
+	    return 'none';
+	}
+	function InsertionSortDiagram({ array, step }) {
+	    if (!step || step.current < 0) {
+	        return null;
+	    }
+	    const desc = step.description.toLowerCase();
+	    const gapIdx = step.current;
+	    const isPicking = step.comparing.length === 1 && step.comparing[0] === gapIdx;
+	    const isInserting = desc.includes('nsert');
+	    const keyVal = isPicking ? array[gapIdx] : null;
+	    return (jsxRuntimeExports.jsxs("div", { style: {
+	            background: 'var(--bg)',
+	            borderRadius: '0.5rem',
+	            border: '1px solid var(--border)',
+	            padding: '0.75rem 1rem',
+	            marginBottom: '1rem',
+	        }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                    fontSize: '0.8rem',
+	                    fontWeight: 600,
+	                    color: 'var(--text-secondary)',
+	                    marginBottom: '0.5rem',
+	                }, children: "Insertion Sort" }), jsxRuntimeExports.jsx("div", { style: {
+	                    display: 'flex',
+	                    gap: `${BAR_GAP}px`,
+	                    justifyContent: 'center',
+	                    minHeight: '26px',
+	                    alignItems: 'flex-end',
+	                }, children: array.map((_, idx) => (jsxRuntimeExports.jsxs("div", { style: {
+	                        width: `${BAR_W}px`,
+	                        display: 'flex',
+	                        justifyContent: 'center',
+	                        alignItems: 'flex-end',
+	                    }, children: [idx === gapIdx && !isInserting && (jsxRuntimeExports.jsxs("div", { style: {
+	                                fontSize: '0.55rem',
+	                                fontWeight: 800,
+	                                color: '#3b82f6',
+	                                background: 'rgba(59,130,246,0.12)',
+	                                padding: '2px 6px',
+	                                borderRadius: '4px',
+	                                letterSpacing: '0.08em',
+	                                textTransform: 'uppercase',
+	                                marginBottom: '4px',
+	                                border: '1px solid rgba(59,130,246,0.3)',
+	                            }, children: ["KEY", isPicking ? `:${keyVal}` : ''] })), isPicking && idx === gapIdx && (jsxRuntimeExports.jsx("span", { style: {
+	                                position: 'absolute',
+	                                marginTop: '-2px',
+	                                fontSize: '0.7rem',
+	                                color: '#3b82f6',
+	                            }, children: "\u2191" }))] }, idx))) }), jsxRuntimeExports.jsx("div", { style: {
+	                    display: 'flex',
+	                    gap: `${BAR_GAP}px`,
+	                    justifyContent: 'center',
+	                }, children: array.map((val, idx) => {
+	                    const isGap = idx === gapIdx && !isInserting && !desc.includes('sorted');
+	                    const boxState = getBoxState(idx, step, isGap ? gapIdx : null);
+	                    const colors = BOX_COLORS[boxState];
+	                    const anim = getBoxAnimState(idx, step, isGap ? gapIdx : null);
+	                    const boxAnimName = BOX_ANIMATIONS[anim] || 'fadeIn 0.2s ease-out';
+	                    return (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' }, children: [jsxRuntimeExports.jsx("div", { style: {
+	                                    width: `${BAR_W}px`,
+	                                    height: '48px',
+	                                    display: 'flex',
+	                                    alignItems: 'center',
+	                                    justifyContent: 'center',
+	                                    borderRadius: '8px',
+	                                    fontSize: '1rem',
+	                                    fontWeight: 700,
+	                                    background: colors.bg,
+	                                    color: colors.text,
+	                                    border: `2px solid ${colors.border}`,
+	                                    boxShadow: boxState === 'comparing'
+	                                        ? '0 0 10px rgba(245,158,11,0.5)'
+	                                        : boxState === 'gap'
+	                                            ? '0 0 6px rgba(59,130,246,0.25)'
+	                                            : '0 1px 3px rgba(0,0,0,0.15)',
+	                                    transition: 'background 0.2s, border 0.2s, color 0.2s',
+	                                    animation: boxAnimName,
+	                                    position: 'relative',
+	                                    transform: isPicking && idx === gapIdx ? 'translateY(-4px)' : 'none',
+	                                    zIndex: isPicking && idx === gapIdx ? 2 : 1,
+	                                }, children: isGap ? '○' : val }), jsxRuntimeExports.jsxs("span", { style: {
+	                                    marginTop: '4px',
+	                                    fontSize: '0.6rem',
+	                                    color: 'var(--text-secondary)',
+	                                    fontWeight: 500,
+	                                }, children: [idx, idx === gapIdx && !isInserting && !desc.includes('sorted')
+	                                        ? ' gap'
+	                                        : ''] })] }, idx));
+	                }) }), jsxRuntimeExports.jsx("div", { style: {
+	                    marginTop: '0.6rem',
+	                    fontSize: '0.85rem',
+	                    color: 'var(--text)',
+	                    textAlign: 'center',
+	                    fontWeight: 500,
+	                    padding: '0.3rem 0.75rem',
+	                    background: 'var(--surface)',
+	                    borderRadius: '6px',
+	                    border: '1px solid var(--border)',
+	                }, children: step.description })] }));
 	}
 
 	function Button({ variant = 'primary', size = 'md', children, style, ...rest }) {
@@ -38804,7 +39753,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	    return (jsxRuntimeExports.jsx("button", { style: base, ...rest, children: children }));
 	}
 
-	const BAR_COLORS = {
+	const CELL_COLORS = {
 	    default: 'var(--accent)',
 	    comparing: '#f59e0b',
 	    swapping: '#ef4444',
@@ -38814,10 +39763,109 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	    subarray: '#6366f1',
 	    merging: '#14b8a6',
 	};
+	function getExpectedComplexity(algo, type) {
+	    const tc = SORTING_ALGORITHMS[algo]?.timeComplexity;
+	    if (!tc)
+	        return '';
+	    switch (type) {
+	        case 'sorted':
+	            if (algo === 'bubble' || algo === 'insertion')
+	                return tc.best;
+	            if (algo === 'quick')
+	                return tc.worst;
+	            return tc.average;
+	        case 'reverse-sorted':
+	            if (algo === 'insertion')
+	                return tc.worst;
+	            if (algo === 'quick')
+	                return tc.worst;
+	            return tc.average;
+	        case 'nearly-sorted':
+	            if (algo === 'bubble' || algo === 'insertion')
+	                return `~${tc.best}`;
+	            if (algo === 'quick')
+	                return `~${tc.average}`;
+	            return tc.average;
+	        default:
+	            return tc.average;
+	    }
+	}
+	function getActiveInstructionStep(algo, description) {
+	    const d = description.toLowerCase();
+	    switch (algo) {
+	        case 'bubble':
+	            if (d.includes('no swap') || d.includes('already sorted') || d.includes('array is sorted'))
+	                return 5;
+	            if (d.includes('largest') || d.includes('bubble') || d.includes('pass'))
+	                return 4;
+	            if (d.includes('swap'))
+	                return 2;
+	            if (d.includes('compar'))
+	                return 1;
+	            return 0;
+	        case 'selection':
+	            if (d.includes('minimum') || d.includes('min ') || d.includes('smallest'))
+	                return 0;
+	            if (d.includes('swap'))
+	                return 1;
+	            if (d.includes('expand') || d.includes('boundar'))
+	                return 2;
+	            if (d.includes('repeat') || d.includes('sorted') || d.includes('done'))
+	                return 3;
+	            return 0;
+	        case 'insertion':
+	            if (d.includes('insert') || d.includes('key') || d.includes('place'))
+	                return 3;
+	            if (d.includes('shift'))
+	                return 2;
+	            if (d.includes('compar'))
+	                return 1;
+	            if (d.includes('repeat') || d.includes('move') || d.includes('next') || d.includes('sorted'))
+	                return 4;
+	            return 0;
+	        case 'merge':
+	            if (d.includes('merg') || d.includes('compar'))
+	                return 2;
+	            if (d.includes('divid') || d.includes('split') || d.includes('half'))
+	                return 0;
+	            if (d.includes('sort') || d.includes('recurs'))
+	                return 1;
+	            if (d.includes('contin') || d.includes('result') || d.includes('sorted'))
+	                return 3;
+	            return 0;
+	        case 'quick':
+	            if (d.includes('pivot')) {
+	                if (d.includes('choos') || d.includes('select'))
+	                    return 0;
+	                return 2;
+	            }
+	            if (d.includes('partit'))
+	                return 1;
+	            if (d.includes('left') || d.includes('right') || d.includes('sub')) {
+	                if (d.includes('left'))
+	                    return 3;
+	                return 4;
+	            }
+	            return 0;
+	        case 'heap':
+	            if (d.includes('build') || d.includes('max heap'))
+	                return 0;
+	            if (d.includes('swap') && d.includes('root'))
+	                return 1;
+	            if (d.includes('reduc') || d.includes('size'))
+	                return 2;
+	            if (d.includes('heapif'))
+	                return 3;
+	            if (d.includes('repeat') || d.includes('sorted') || d.includes('remaining'))
+	                return 4;
+	            return 0;
+	    }
+	}
 	function SortingVisualizer({ algorithm }) {
 	    const [array, setArray] = reactExports.useState([]);
-	    const [size, setSize] = reactExports.useState(20);
-	    const [speed, setSpeed] = reactExports.useState(100);
+	    const [size, setSize] = reactExports.useState(10);
+	    const [speed, setSpeed] = reactExports.useState(500);
+	    const [arrayType, setArrayType] = reactExports.useState('random');
 	    const [currentStep, setCurrentStep] = reactExports.useState(0);
 	    const [steps, setSteps] = reactExports.useState([]);
 	    const [playing, setPlaying] = reactExports.useState(false);
@@ -38825,23 +39873,33 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	    const [swaps, setSwaps] = reactExports.useState(0);
 	    const [startTime, setStartTime] = reactExports.useState(null);
 	    const [elapsed, setElapsed] = reactExports.useState(0);
+	    const [showSteps, setShowSteps] = reactExports.useState(true);
 	    const timerRef = reactExports.useRef(null);
 	    const playRef = reactExports.useRef(false);
-	    const getBarColor = (idx, step) => {
+	    const swapAnimRef = reactExports.useRef(0);
+	    const getCellColor = (idx, step) => {
 	        if (step.sorted.includes(idx))
-	            return BAR_COLORS.sorted;
+	            return CELL_COLORS.sorted;
 	        if (step.swapping.includes(idx))
-	            return BAR_COLORS.swapping;
+	            return CELL_COLORS.swapping;
 	        if (step.comparing.includes(idx))
-	            return BAR_COLORS.comparing;
+	            return CELL_COLORS.comparing;
 	        if (step.pivot !== undefined && idx === step.pivot)
-	            return BAR_COLORS.pivot;
+	            return CELL_COLORS.pivot;
 	        if (step.current === idx)
-	            return BAR_COLORS.current;
-	        return BAR_COLORS.default;
+	            return CELL_COLORS.current;
+	        return CELL_COLORS.default;
 	    };
+	    const generateArray = reactExports.useCallback((type, sz) => {
+	        switch (type) {
+	            case 'sorted': return generateSortedArray(sz, 1, 99);
+	            case 'nearly-sorted': return generateNearlySortedArray(sz, 1, 99);
+	            case 'reverse-sorted': return generateReverseSortedArray(sz, 1, 99);
+	            default: return generateRandomArray(sz, 1, 99);
+	        }
+	    }, []);
 	    const generateNewArray = reactExports.useCallback(() => {
-	        const arr = generateRandomArray(size, 5, 100);
+	        const arr = generateArray(arrayType, size);
 	        setArray(arr);
 	        const newSteps = sortingAlgorithms[algorithm].steps(arr);
 	        setSteps(newSteps);
@@ -38851,12 +39909,12 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        setSwaps(0);
 	        setStartTime(null);
 	        setElapsed(0);
-	    }, [algorithm, size]);
+	    }, [algorithm, size, arrayType, generateArray]);
 	    reactExports.useEffect(() => {
 	        generateNewArray();
 	    }, [generateNewArray]);
 	    reactExports.useEffect(() => {
-	        if (playing && currentStep < steps.length - 1) {
+	        if (playing && currentStep < maxStep) {
 	            playRef.current = true;
 	            const interval = setInterval(() => {
 	                if (!playRef.current)
@@ -38879,7 +39937,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                timerRef.current = null;
 	            };
 	        }
-	    }, [playing, speed, steps.length]);
+	    }, [playing, speed, steps]);
 	    reactExports.useEffect(() => {
 	        if (steps.length > 0 && currentStep < steps.length) {
 	            const step = steps[currentStep];
@@ -38889,6 +39947,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	            }
 	            if (step.description.toLowerCase().includes('swapp')) {
 	                setSwaps(p => p + 1);
+	                swapAnimRef.current += 1;
 	            }
 	        }
 	    }, [currentStep, steps]);
@@ -38908,7 +39967,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        }
 	    }, [playing, startTime]);
 	    const togglePlay = () => {
-	        if (currentStep >= steps.length - 1)
+	        if (currentStep >= maxStep)
 	            return;
 	        if (!playing) {
 	            setStartTime(performance.now());
@@ -38920,7 +39979,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	            setPlaying(false);
 	            setCurrentStep(currentStep - 1);
 	        }
-	        if (dir === 'next' && currentStep < steps.length - 1) {
+	        if (dir === 'next' && currentStep < maxStep) {
 	            setPlaying(false);
 	            setCurrentStep(currentStep + 1);
 	        }
@@ -38932,36 +39991,175 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        setSwaps(0);
 	        setStartTime(null);
 	        setElapsed(0);
-	        const arr = generateRandomArray(size, 5, 100);
+	        const arr = generateArray(arrayType, size);
 	        setArray(arr);
 	        const newSteps = sortingAlgorithms[algorithm].steps(arr);
 	        setSteps(newSteps);
 	    };
 	    const step = currentStep < steps.length ? steps[currentStep] : null;
-	    const maxVal = Math.max(...array, 1);
-	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: generateNewArray, children: "Generate New Array" }), jsxRuntimeExports.jsx(Button, { onClick: restart, variant: "secondary", children: "Restart" }), jsxRuntimeExports.jsx(Button, { onClick: () => { const arr = [...array].sort(() => Math.random() - 0.5); setArray(arr); }, variant: "secondary", children: "Shuffle" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Size:", jsxRuntimeExports.jsx("input", { type: "range", min: 5, max: 50, value: size, onChange: e => setSize(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { style: { minWidth: '2rem' }, children: size })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 10, max: 500, value: 1100 - speed, onChange: e => setSpeed(1100 - Number(e.target.value)) })] })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: togglePlay, children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Done' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Previous Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }, children: [jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Comparisons: ", jsxRuntimeExports.jsx("strong", { children: comparisons })] }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Swaps: ", jsxRuntimeExports.jsx("strong", { children: swaps })] }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Time: ", jsxRuntimeExports.jsxs("strong", { children: [(elapsed / 1000).toFixed(2), "s"] })] })] }), jsxRuntimeExports.jsx("div", { style: {
+	    const instructionSteps = SORTING_ALGORITHMS[algorithm]?.steps || [];
+	    const activeInstructionStep = step ? getActiveInstructionStep(algorithm, step.description) : -1;
+	    const diagramData = reactExports.useMemo(() => {
+	        if (algorithm === 'merge')
+	            return generateMergeSortDiagram([...array]);
+	        return null;
+	    }, [algorithm, array]);
+	    const isMerge = algorithm === 'merge';
+	    const maxStep = isMerge && diagramData ? diagramData.frames.length - 1 : steps.length - 1;
+	    const diagramFrame = isMerge && diagramData
+	        ? diagramData.frames[Math.min(currentStep, diagramData.frames.length - 1)]
+	        : null;
+	    const activeSubarray = reactExports.useMemo(() => {
+	        if (!isMerge || !diagramData || !diagramFrame)
+	            return null;
+	        for (const fn of diagramFrame.nodes) {
+	            if (fn.state === 'dividing' || fn.state === 'merging') {
+	                const nodeData = diagramData.allNodes.find(n => n.id === fn.id);
+	                if (nodeData)
+	                    return { start: nodeData.start, end: nodeData.end };
+	            }
+	        }
+	        return null;
+	    }, [diagramData, diagramFrame, isMerge]);
+	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("style", { children: `
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      ` }), jsxRuntimeExports.jsxs("div", { style: { marginBottom: '1rem' }, children: [jsxRuntimeExports.jsxs("button", { onClick: () => setShowSteps(!showSteps), style: {
+	                            background: 'none',
+	                            border: '1px solid var(--border)',
+	                            borderRadius: '0.375rem',
+	                            padding: '0.375rem 0.75rem',
+	                            cursor: 'pointer',
+	                            color: 'var(--text-secondary)',
+	                            fontSize: '0.8rem',
+	                            display: 'flex',
+	                            alignItems: 'center',
+	                            gap: '0.375rem',
+	                        }, children: [showSteps ? '▼' : '▶', " Algorithm Steps"] }), showSteps && (jsxRuntimeExports.jsxs("div", { style: {
+	                            marginTop: '0.5rem',
+	                            background: 'var(--bg)',
+	                            border: '1px solid var(--border)',
+	                            borderRadius: '0.5rem',
+	                            padding: '0.75rem 1rem',
+	                        }, children: [jsxRuntimeExports.jsxs("div", { style: { fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }, children: [SORTING_ALGORITHMS[algorithm]?.name || algorithm, " \u2014 Step by Step"] }), instructionSteps.map((s, i) => (jsxRuntimeExports.jsxs("div", { style: {
+	                                    display: 'flex',
+	                                    alignItems: 'center',
+	                                    gap: '0.5rem',
+	                                    padding: '0.25rem 0',
+	                                    fontSize: '0.85rem',
+	                                    color: i === activeInstructionStep ? 'var(--text)' : 'var(--text-secondary)',
+	                                    fontWeight: i === activeInstructionStep ? 600 : 400,
+	                                    opacity: i <= activeInstructionStep ? 1 : 0.5,
+	                                }, children: [jsxRuntimeExports.jsx("span", { style: {
+	                                            width: '18px',
+	                                            height: '18px',
+	                                            borderRadius: '50%',
+	                                            display: 'flex',
+	                                            alignItems: 'center',
+	                                            justifyContent: 'center',
+	                                            fontSize: '0.65rem',
+	                                            fontWeight: 700,
+	                                            background: i <= activeInstructionStep ? 'var(--accent)' : 'var(--border)',
+	                                            color: i <= activeInstructionStep ? '#fff' : 'var(--text-secondary)',
+	                                            flexShrink: 0,
+	                                        }, children: i + 1 }), s] }, i)))] }))] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: generateNewArray, children: "Generate New Array" }), jsxRuntimeExports.jsx(Button, { onClick: restart, variant: "secondary", children: "Restart" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx("span", { style: { fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }, children: "Array:" }), ['random', 'sorted', 'nearly-sorted', 'reverse-sorted'].map(type => (jsxRuntimeExports.jsx("button", { onClick: () => { setArrayType(type); }, style: {
+	                            background: arrayType === type ? 'var(--accent)' : 'var(--bg)',
+	                            color: arrayType === type ? '#fff' : 'var(--text-secondary)',
+	                            border: `1px solid ${arrayType === type ? 'var(--accent)' : 'var(--border)'}`,
+	                            borderRadius: '0.375rem',
+	                            padding: '0.3rem 0.6rem',
+	                            cursor: 'pointer',
+	                            fontSize: '0.75rem',
+	                            fontWeight: 600,
+	                            textTransform: 'capitalize',
+	                            transition: 'all 0.15s',
+	                        }, children: type === 'nearly-sorted' ? 'Nearly Sorted' : type === 'reverse-sorted' ? 'Reverse Sorted' : type }, type))), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }, children: ["Expected: ", jsxRuntimeExports.jsx("strong", { style: { color: 'var(--text)' }, children: getExpectedComplexity(algorithm, arrayType) })] })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }, children: ["Size:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 30, value: size, onChange: e => setSize(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { style: { minWidth: '2rem' }, children: size })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 1, max: 100, value: 101 - Math.round(speed / 20), onChange: e => setSpeed((101 - Number(e.target.value)) * 20) }), jsxRuntimeExports.jsxs("span", { style: { minWidth: '3rem', textAlign: 'right' }, children: [speed, "ms"] })] })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: togglePlay, children: playing ? 'Pause' : currentStep >= maxStep ? 'Done' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Previous Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= maxStep, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", Math.max(maxStep, 0)] })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }, children: [jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Comparisons: ", jsxRuntimeExports.jsx("strong", { children: comparisons })] }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Swaps: ", jsxRuntimeExports.jsx("strong", { children: swaps })] }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Time: ", jsxRuntimeExports.jsxs("strong", { children: [(elapsed / 1000).toFixed(2), "s"] })] })] }), isMerge && diagramData && (jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [jsxRuntimeExports.jsx(MergeSortDiagram, { array: array, currentStep: currentStep, totalSteps: diagramData.frames.length, step: step }), activeSubarray && (jsxRuntimeExports.jsx("div", { style: {
+	                            display: 'flex',
+	                            justifyContent: 'center',
+	                            gap: '4px',
+	                            marginTop: '0.5rem',
+	                            marginBottom: '0.5rem',
+	                            padding: '0.25rem 0',
+	                        }, children: array.map((_, idx) => (jsxRuntimeExports.jsx("div", { style: {
+	                                width: '48px',
+	                                height: '4px',
+	                                borderRadius: '2px',
+	                                background: (idx >= activeSubarray.start && idx < activeSubarray.end)
+	                                    ? '#3b82f6' : 'var(--border)',
+	                                transition: 'background 0.2s',
+	                            } }, idx))) }))] })), algorithm === 'heap' && (jsxRuntimeExports.jsx("div", { style: { marginBottom: '1rem' }, children: jsxRuntimeExports.jsx(HeapSortDiagram, { array: array, step: step }) })), algorithm === 'quick' && (jsxRuntimeExports.jsx(QuickSortDiagram, { array: array, step: step, steps: steps, currentStep: currentStep })), algorithm === 'insertion' && (jsxRuntimeExports.jsx(InsertionSortDiagram, { array: array, step: step })), jsxRuntimeExports.jsx("div", { style: {
 	                    width: '100%',
-	                    height: '350px',
-	                    display: 'flex',
-	                    alignItems: 'flex-end',
-	                    gap: '2px',
-	                    padding: '0.5rem',
+	                    overflowX: 'auto',
+	                    padding: '1rem 0.5rem',
 	                    background: 'var(--bg)',
 	                    borderRadius: '0.5rem',
 	                    border: '1px solid var(--border)',
-	                    position: 'relative',
-	                }, role: "img", "aria-label": `Sorting visualization for ${algorithm}`, children: array.map((val, idx) => {
-	                    const barHeight = (val / maxVal) * 300;
-	                    const color = step ? getBarColor(idx, step) : BAR_COLORS.default;
-	                    return (jsxRuntimeExports.jsx("div", { style: {
-	                            flex: 1,
-	                            height: `${Math.max(barHeight, 4)}px`,
-	                            background: color,
-	                            borderRadius: '2px 2px 0 0',
-	                            transition: 'height 0.08s ease, background 0.15s ease',
-	                            minWidth: '4px',
-	                        }, title: `Index ${idx}: ${val}` }, idx));
-	                }) }), step && (jsxRuntimeExports.jsx("p", { style: { marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center' }, children: step.description })), step?.subarray && (jsxRuntimeExports.jsxs("div", { style: { marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }, children: ["Active sub-array: [", step.subarray.start, "..", step.subarray.end - 1, "]"] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '1rem', justifyContent: 'center' }, children: Object.entries(BAR_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '12px', height: '12px', background: color, borderRadius: '2px', display: 'inline-block' } }), state] }, state))) })] }));
+	                }, role: "img", "aria-label": `Sorting visualization for ${algorithm}`, children: jsxRuntimeExports.jsx("div", { style: {
+	                        display: 'flex',
+	                        alignItems: 'flex-start',
+	                        justifyContent: 'center',
+	                        gap: '4px',
+	                        minWidth: 'fit-content',
+	                        padding: '0 0.5rem',
+	                    }, children: array.flatMap((val, idx) => {
+	                        const color = step ? getCellColor(idx, step) : CELL_COLORS.default;
+	                        const isSwapping = step?.swapping.includes(idx);
+	                        const isComparing = step?.comparing.includes(idx);
+	                        const isInSubarray = activeSubarray && idx >= activeSubarray.start && idx < activeSubarray.end;
+	                        const isInStepSubarray = step?.subarray && idx >= step.subarray.start && idx < step.subarray.end;
+	                        const isHighlighted = isInSubarray || isInStepSubarray;
+	                        const sortedSet = new Set(step?.sorted ?? []);
+	                        sortedSet.has(idx);
+	                        const lastSortedIdx = step?.sorted.length ? Math.max(...step.sorted) : -1;
+	                        const isFirstUnsorted = idx === lastSortedIdx + 1 && lastSortedIdx >= 0;
+	                        const swapPartner = isSwapping && step?.swapping && step.swapping.length === 2
+	                            ? step.swapping[step.swapping[0] === idx ? 1 : 0]
+	                            : undefined;
+	                        const swapOffset = swapPartner !== undefined ? `${(swapPartner - idx) * 52}px` : '0px';
+	                        const items = [];
+	                        items.push(jsxRuntimeExports.jsxs("div", { style: {
+	                                display: 'flex',
+	                                flexDirection: 'column',
+	                                alignItems: 'center',
+	                                gap: '4px',
+	                                animation: isSwapping
+	                                    ? `swapArrive 0.4s ease-out`
+	                                    : 'none',
+	                                '--swap-from': swapOffset,
+	                            }, children: [jsxRuntimeExports.jsxs("div", { style: {
+	                                        width: '48px',
+	                                        height: '48px',
+	                                        display: 'flex',
+	                                        alignItems: 'center',
+	                                        justifyContent: 'center',
+	                                        background: color,
+	                                        color: '#fff',
+	                                        fontWeight: 700,
+	                                        fontSize: '1rem',
+	                                        borderRadius: '6px',
+	                                        border: isComparing
+	                                            ? '3px solid #fff'
+	                                            : isHighlighted
+	                                                ? '2px solid #6366f1'
+	                                                : isFirstUnsorted
+	                                                    ? '2px dashed #22c55e'
+	                                                    : '3px solid transparent',
+	                                        boxShadow: isComparing
+	                                            ? '0 0 12px rgba(245,158,11,0.6)'
+	                                            : isHighlighted
+	                                                ? 'inset 0 -3px 0 rgba(99,102,241,0.3), 0 2px 4px rgba(0,0,0,0.15)'
+	                                                : '0 2px 4px rgba(0,0,0,0.15)',
+	                                        transition: 'background 0.12s ease, border 0.12s ease, box-shadow 0.12s ease',
+	                                        position: 'relative',
+	                                    }, title: `Index ${idx}: ${val}`, children: [val, isSwapping && (jsxRuntimeExports.jsx("span", { style: { position: 'absolute', top: '-4px', right: '-4px', fontSize: '0.65rem' }, children: "\uD83D\uDD04" }))] }), jsxRuntimeExports.jsx("span", { style: {
+	                                        fontSize: '0.65rem',
+	                                        color: isHighlighted ? '#6366f1' : 'var(--text-secondary)',
+	                                        fontWeight: isHighlighted ? 700 : 500,
+	                                    }, children: idx })] }, idx));
+	                        return items;
+	                    }) }) }), step && (jsxRuntimeExports.jsx("p", { style: { marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text)', textAlign: 'center', fontWeight: 500 }, children: step.description })), step?.subarray && (jsxRuntimeExports.jsxs("div", { style: { marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }, children: ["Active sub-array: [", step.subarray.start, "..", step.subarray.end - 1, "]"] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '1rem', justifyContent: 'center' }, children: Object.entries(CELL_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '14px', height: '14px', background: color, borderRadius: '3px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.2)' } }), state] }, state))) })] }));
 	}
 
 	function r(e){var t,f,n="";if("string"==typeof e||"number"==typeof e)n+=e;else if("object"==typeof e)if(Array.isArray(e)){var o=e.length;for(t=0;t<o;t++)e[t]&&(f=r(e[t]))&&(n&&(n+=" "),n+=f);}else for(f in e)e[f]&&(n&&(n+=" "),n+=f);return n}function clsx(){for(var e,t,f=0,n="",o=arguments.length;f<o;f++)(e=arguments[f])&&(t=r(e))&&(n&&(n+=" "),n+=t);return n}
@@ -68926,78 +70124,316 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    dijkstra: { steps: dijkstraSteps },
 	};
 
-	function generateGraph(numNodes, weighted) {
-	    const nodes = [];
-	    const edges = [];
-	    const adjacencyList = new Map();
-	    for (let i = 0; i < numNodes; i++) {
-	        const angle = (2 * Math.PI * i) / numNodes - Math.PI / 2;
-	        const radius = 250;
-	        const cx = 350, cy = 280;
-	        nodes.push({
-	            id: i,
-	            label: `${i}`,
-	            x: cx + radius * Math.cos(angle),
-	            y: cy + radius * Math.sin(angle),
-	            state: 'unvisited',
-	        });
-	        adjacencyList.set(i, []);
+	const SVG_W = 700;
+	const SVG_H = 560;
+	const CX = 350;
+	const CY = 280;
+	function forceDirectedLayout(nodes, edges) {
+	    const k = Math.sqrt((SVG_W * SVG_H) / nodes.length) * 0.6;
+	    const iterations = 80;
+	    for (let iter = 0; iter < iterations; iter++) {
+	        const forces = new Map();
+	        for (const n of nodes)
+	            forces.set(n.id, { fx: 0, fy: 0 });
+	        for (let i = 0; i < nodes.length; i++) {
+	            for (let j = i + 1; j < nodes.length; j++) {
+	                let dx = nodes[j].x - nodes[i].x;
+	                let dy = nodes[j].y - nodes[i].y;
+	                let dist = Math.sqrt(dx * dx + dy * dy);
+	                if (dist < 1) {
+	                    dist = 1;
+	                    dx = Math.random() - 0.5;
+	                    dy = Math.random() - 0.5;
+	                }
+	                const rep = (k * k) / dist;
+	                const fx = (dx / dist) * rep;
+	                const fy = (dy / dist) * rep;
+	                forces.get(nodes[i].id).fx -= fx;
+	                forces.get(nodes[i].id).fy -= fy;
+	                forces.get(nodes[j].id).fx += fx;
+	                forces.get(nodes[j].id).fy += fy;
+	            }
+	        }
+	        for (const edge of edges) {
+	            const a = nodes.find(n => n.id === edge.from);
+	            const b = nodes.find(n => n.id === edge.to);
+	            if (!a || !b)
+	                continue;
+	            let dx = b.x - a.x;
+	            let dy = b.y - a.y;
+	            let dist = Math.sqrt(dx * dx + dy * dy);
+	            if (dist < 1) {
+	                dist = 1;
+	                dx = Math.random() - 0.5;
+	                dy = Math.random() - 0.5;
+	            }
+	            const attr = (dist * dist) / k;
+	            const fx = (dx / dist) * attr;
+	            const fy = (dy / dist) * attr;
+	            forces.get(edge.from).fx += fx;
+	            forces.get(edge.from).fy += fy;
+	            forces.get(edge.to).fx -= fx;
+	            forces.get(edge.to).fy -= fy;
+	        }
+	        const temp = (SVG_W / 12) * (1 - iter / iterations);
+	        for (const n of nodes) {
+	            const f = forces.get(n.id);
+	            const d = Math.sqrt(f.fx * f.fx + f.fy * f.fy);
+	            if (d < 0.01)
+	                continue;
+	            n.x += (f.fx / d) * Math.min(d, temp);
+	            n.y += (f.fy / d) * Math.min(d, temp);
+	            n.x = Math.max(40, Math.min(SVG_W - 40, n.x));
+	            n.y = Math.max(40, Math.min(SVG_H - 40, n.y));
+	        }
 	    }
+	}
+	function ensureConnected(nodes, edges, adjacencyList, weighted) {
+	    if (nodes.length <= 1)
+	        return;
+	    const visited = new Set();
+	    const queue = [nodes[0].id];
+	    visited.add(nodes[0].id);
+	    while (queue.length > 0) {
+	        const node = queue.shift();
+	        for (const { to } of adjacencyList.get(node) || []) {
+	            if (!visited.has(to)) {
+	                visited.add(to);
+	                queue.push(to);
+	            }
+	        }
+	    }
+	    for (const n of nodes) {
+	        if (!visited.has(n.id)) {
+	            const target = nodes[0].id;
+	            const weight = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	            edges.push({ from: n.id, to: target, weight, state: 'default' });
+	            adjacencyList.get(n.id).push({ to: target, weight });
+	            adjacencyList.get(target).push({ to: n.id, weight });
+	            visited.add(n.id);
+	        }
+	    }
+	}
+	function circleLayout(nodes) {
+	    const r = Math.min(SVG_W, SVG_H) * 0.38;
+	    nodes.forEach((n, i) => {
+	        const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
+	        n.x = CX + r * Math.cos(angle);
+	        n.y = CY + r * Math.sin(angle);
+	    });
+	}
+	function addEdge(adjacencyList, from, to, weight) {
+	    adjacencyList.get(from).push({ to, weight });
+	    adjacencyList.get(to).push({ to: from, weight });
+	}
+	function makeNodes(numNodes) {
+	    return Array.from({ length: numNodes }, (_, i) => ({
+	        id: i,
+	        label: `${i}`,
+	        x: CX + (Math.random() - 0.5) * SVG_W * 0.3,
+	        y: CY + (Math.random() - 0.5) * SVG_H * 0.3,
+	        state: 'unvisited',
+	    }));
+	}
+	function makeAdjList(numNodes) {
+	    const map = new Map();
+	    for (let i = 0; i < numNodes; i++)
+	        map.set(i, []);
+	    return map;
+	}
+	/* ---- Random graph ---- */
+	function generateRandomGraph(numNodes, weighted) {
+	    const nodes = makeNodes(numNodes);
+	    const edges = [];
+	    const adjacencyList = makeAdjList(numNodes);
 	    for (let i = 0; i < numNodes; i++) {
-	        let connected = false;
 	        const numEdges = Math.min(2 + Math.floor(Math.random() * Math.max(2, numNodes / 3)), numNodes - 1);
 	        const candidates = [];
 	        for (let j = 0; j < numNodes; j++) {
-	            if (j !== i && !adjacencyList.get(i).some(e => e.to === j)) {
+	            if (j !== i && !adjacencyList.get(i).some(e => e.to === j))
 	                candidates.push(j);
-	            }
 	        }
 	        const shuffled = candidates.sort(() => Math.random() - 0.5);
 	        const toAdd = Math.min(numEdges, shuffled.length);
 	        for (let k = 0; k < toAdd; k++) {
 	            const j = shuffled[k];
-	            if (i === j)
-	                continue;
-	            if (adjacencyList.get(i).some(e => e.to === j))
-	                continue;
-	            const weight = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
-	            edges.push({ from: i, to: j, weight, state: 'default' });
-	            adjacencyList.get(i).push({ to: j, weight });
-	            adjacencyList.get(j).push({ to: i, weight });
-	            connected = true;
-	        }
-	        if (!connected && i !== 0) {
-	            const j = i - 1;
 	            const weight = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
 	            edges.push({ from: i, to: j, weight, state: 'default' });
 	            adjacencyList.get(i).push({ to: j, weight });
 	            adjacencyList.get(j).push({ to: i, weight });
 	        }
 	    }
-	    if (numNodes > 1) {
-	        const visited = new Set();
-	        const queue = [0];
-	        visited.add(0);
-	        while (queue.length > 0) {
-	            const node = queue.shift();
-	            for (const { to } of adjacencyList.get(node) || []) {
-	                if (!visited.has(to)) {
-	                    visited.add(to);
-	                    queue.push(to);
-	                }
+	    ensureConnected(nodes, edges, adjacencyList, weighted);
+	    forceDirectedLayout(nodes, edges);
+	    return { nodes, edges, adjacencyList };
+	}
+	/* ---- Grid graph ---- */
+	function generateGridGraph(numNodes, weighted) {
+	    const cols = Math.max(2, Math.ceil(Math.sqrt(numNodes)));
+	    const rows = Math.max(2, Math.ceil(numNodes / cols));
+	    const actual = rows * cols;
+	    const nodes = [];
+	    const adjacencyList = makeAdjList(actual);
+	    const edges = [];
+	    for (let r = 0; r < rows; r++) {
+	        for (let c = 0; c < cols; c++) {
+	            const id = r * cols + c;
+	            nodes.push({
+	                id,
+	                label: `${id}`,
+	                x: 50 + (SVG_W - 100) * (c / (cols - 1 || 1)),
+	                y: 50 + (SVG_H - 100) * (r / (rows - 1 || 1)),
+	                state: 'unvisited',
+	            });
+	        }
+	    }
+	    for (let r = 0; r < rows; r++) {
+	        for (let c = 0; c < cols; c++) {
+	            const id = r * cols + c;
+	            if (c + 1 < cols) {
+	                const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	                edges.push({ from: id, to: id + 1, weight: w, state: 'default' });
+	                addEdge(adjacencyList, id, id + 1, w);
+	            }
+	            if (r + 1 < rows) {
+	                const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	                edges.push({ from: id, to: id + cols, weight: w, state: 'default' });
+	                addEdge(adjacencyList, id, id + cols, w);
 	            }
 	        }
-	        for (let i = 0; i < numNodes; i++) {
-	            if (!visited.has(i)) {
-	                const j = 0;
-	                const weight = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
-	                edges.push({ from: i, to: j, weight, state: 'default' });
-	                adjacencyList.get(i).push({ to: j, weight });
-	                adjacencyList.get(j).push({ to: i, weight });
-	            }
+	    }
+	    const data = { nodes, edges, adjacencyList };
+	    if (actual > numNodes)
+	        return trimNodes(data, numNodes);
+	    return data;
+	}
+	/* ---- Tree graph ---- */
+	function generateTreeGraph(numNodes, weighted) {
+	    const nodes = [];
+	    const edges = [];
+	    const adjacencyList = makeAdjList(numNodes);
+	    const depth = Math.ceil(Math.log2(numNodes + 1));
+	    const getX = (level, pos) => {
+	        const positionsInLevel = Math.pow(2, level);
+	        return 50 + (SVG_W - 100) * ((pos + 0.5) / positionsInLevel);
+	    };
+	    const getY = (level) => {
+	        return 50 + (SVG_H - 100) * (level / (depth - 1 || 1));
+	    };
+	    for (let i = 0; i < numNodes; i++) {
+	        const level = Math.floor(Math.log2(i + 1));
+	        const posInLevel = i - Math.pow(2, level) + 1;
+	        nodes.push({
+	            id: i,
+	            label: `${i}`,
+	            x: getX(level, posInLevel),
+	            y: getY(level),
+	            state: 'unvisited',
+	        });
+	    }
+	    for (let i = 0; i < numNodes; i++) {
+	        const left = 2 * i + 1;
+	        const right = 2 * i + 2;
+	        if (left < numNodes) {
+	            const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	            edges.push({ from: i, to: left, weight: w, state: 'default' });
+	            addEdge(adjacencyList, i, left, w);
+	        }
+	        if (right < numNodes) {
+	            const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	            edges.push({ from: i, to: right, weight: w, state: 'default' });
+	            addEdge(adjacencyList, i, right, w);
 	        }
 	    }
 	    return { nodes, edges, adjacencyList };
+	}
+	/* ---- Complete graph ---- */
+	function generateCompleteGraph(numNodes, weighted) {
+	    const nodes = [];
+	    const edges = [];
+	    const adjacencyList = makeAdjList(numNodes);
+	    for (let i = 0; i < numNodes; i++) {
+	        nodes.push({ id: i, label: `${i}`, x: 0, y: 0, state: 'unvisited' });
+	    }
+	    for (let i = 0; i < numNodes; i++) {
+	        for (let j = i + 1; j < numNodes; j++) {
+	            const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	            edges.push({ from: i, to: j, weight: w, state: 'default' });
+	            addEdge(adjacencyList, i, j, w);
+	        }
+	    }
+	    circleLayout(nodes);
+	    return { nodes, edges, adjacencyList };
+	}
+	/* ---- Disconnected graph ---- */
+	function generateDisconnectedGraph(numNodes, weighted) {
+	    const nodes = [];
+	    const edges = [];
+	    const adjacencyList = makeAdjList(numNodes);
+	    const numComponents = Math.min(3, Math.max(2, Math.floor(numNodes / 3)));
+	    const compSizes = [];
+	    let remaining = numNodes;
+	    for (let c = 0; c < numComponents; c++) {
+	        const size = c === numComponents - 1 ? remaining : Math.floor(numNodes / numComponents);
+	        compSizes.push(size);
+	        remaining -= size;
+	    }
+	    let offset = 0;
+	    for (let c = 0; c < numComponents; c++) {
+	        const size = compSizes[c];
+	        for (let i = 0; i < size; i++) {
+	            const id = offset + i;
+	            nodes.push({ id, label: `${id}`, x: 0, y: 0, state: 'unvisited' });
+	        }
+	        for (let i = 0; i < size; i++) {
+	            const from = offset + i;
+	            const numEdges = Math.min(1 + Math.floor(Math.random() * Math.max(1, size / 2)), size - 1);
+	            const candidates = [];
+	            for (let j = 0; j < size; j++) {
+	                const to = offset + j;
+	                if (to !== from && !adjacencyList.get(from).some(e => e.to === to))
+	                    candidates.push(to);
+	            }
+	            const shuffled = candidates.sort(() => Math.random() - 0.5);
+	            const toAdd = Math.min(numEdges, shuffled.length);
+	            for (let k = 0; k < toAdd; k++) {
+	                const to = shuffled[k];
+	                const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	                edges.push({ from, to, weight: w, state: 'default' });
+	                addEdge(adjacencyList, from, to, w);
+	            }
+	        }
+	        offset += size;
+	    }
+	    forceDirectedLayout(nodes, edges);
+	    return { nodes, edges, adjacencyList };
+	}
+	function trimNodes(data, targetCount) {
+	    if (data.nodes.length <= targetCount)
+	        return data;
+	    const remove = data.nodes.slice(targetCount).map(n => n.id);
+	    const removeSet = new Set(remove);
+	    data.nodes = data.nodes.filter(n => !removeSet.has(n.id));
+	    data.edges = data.edges.filter(e => !removeSet.has(e.from) && !removeSet.has(e.to));
+	    for (const id of remove) {
+	        data.adjacencyList.delete(id);
+	    }
+	    for (const [, list] of data.adjacencyList) {
+	        for (let i = list.length - 1; i >= 0; i--) {
+	            if (removeSet.has(list[i].to))
+	                list.splice(i, 1);
+	        }
+	    }
+	    return data;
+	}
+	function generateGraph(numNodes, weighted, graphType = 'random') {
+	    switch (graphType) {
+	        case 'grid': return generateGridGraph(numNodes, weighted);
+	        case 'tree': return generateTreeGraph(numNodes, weighted);
+	        case 'complete': return generateCompleteGraph(numNodes, weighted);
+	        case 'disconnected': return generateDisconnectedGraph(numNodes, weighted);
+	        default: return generateRandomGraph(numNodes, weighted);
+	    }
 	}
 
 	function StepHistoryTable({ steps, currentStep, algorithm, onJumpToStep, hasStarted }) {
@@ -69092,10 +70528,26 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    'path-found': '\u2605',
 	    complete: '\u2713',
 	};
+	const EDIT_BUTTONS = [
+	    { mode: 'view', label: 'View', icon: '\uD83D\uDC46' },
+	    { mode: 'move', label: 'Move', icon: '\u270B' },
+	    { mode: 'addNode', label: 'Add Node', icon: '\u2795' },
+	    { mode: 'removeNode', label: 'Remove Node', icon: '\u274C' },
+	    { mode: 'addEdge', label: 'Add Edge', icon: '\uD83D\uDD17' },
+	    { mode: 'removeEdge', label: 'Remove Edge', icon: '\u2702' },
+	];
+	const GRAPH_TYPE_BUTTONS = [
+	    { type: 'random', label: 'Random' },
+	    { type: 'grid', label: 'Grid' },
+	    { type: 'tree', label: 'Tree' },
+	    { type: 'complete', label: 'Complete' },
+	    { type: 'disconnected', label: 'Disconnected' },
+	];
 	function GraphVisualizer({ algorithm }) {
 	    const [numNodes, setNumNodes] = reactExports.useState(8);
 	    const [startNode, setStartNode] = reactExports.useState(0);
-	    const [destNode, setDestNode] = reactExports.useState(numNodes - 1);
+	    const [destNode, setDestNode] = reactExports.useState(7);
+	    const [graphType, setGraphType] = reactExports.useState('random');
 	    const [graph, setGraph] = reactExports.useState(null);
 	    const [steps, setSteps] = reactExports.useState([]);
 	    const [currentStep, setCurrentStep] = reactExports.useState(0);
@@ -69103,13 +70555,26 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	    const [speed, setSpeed] = reactExports.useState(500);
 	    const [hasStarted, setHasStarted] = reactExports.useState(false);
 	    const [pathRevealCount, setPathRevealCount] = reactExports.useState(0);
+	    const [editMode, setEditMode] = reactExports.useState('view');
+	    const [draggingNode, setDraggingNode] = reactExports.useState(null);
+	    const [dragOffset, setDragOffset] = reactExports.useState({ x: 0, y: 0 });
+	    const [hoveredNode, setHoveredNode] = reactExports.useState(null);
+	    const [hoveredEdge, setHoveredEdge] = reactExports.useState(null);
+	    const [edgeSource, setEdgeSource] = reactExports.useState(null);
+	    const [zoom, setZoom] = reactExports.useState(1);
+	    const [pan, setPan] = reactExports.useState({ x: 0, y: 0 });
+	    const [isPanning, setIsPanning] = reactExports.useState(false);
+	    const panStart = reactExports.useRef({ x: 0, y: 0 });
+	    const panOffsetStart = reactExports.useRef({ x: 0, y: 0 });
+	    const svgRef = reactExports.useRef(null);
+	    const containerRef = reactExports.useRef(null);
 	    const timerRef = reactExports.useRef(null);
 	    const pathTimerRef = reactExports.useRef(null);
 	    const weighted = algorithm === 'dijkstra';
 	    const generateNewGraph = reactExports.useCallback(() => {
 	        if (pathTimerRef.current)
 	            clearInterval(pathTimerRef.current);
-	        const g = generateGraph(numNodes, weighted);
+	        const g = generateGraph(numNodes, weighted, graphType);
 	        setGraph(g);
 	        const dest = destNode >= numNodes ? numNodes - 1 : destNode;
 	        if (destNode >= numNodes)
@@ -69120,7 +70585,8 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	        setPlaying(false);
 	        setHasStarted(false);
 	        setPathRevealCount(0);
-	    }, [numNodes, startNode, destNode, algorithm, weighted]);
+	        setEdgeSource(null);
+	    }, [numNodes, startNode, destNode, algorithm, weighted, graphType]);
 	    reactExports.useEffect(() => {
 	        generateNewGraph();
 	    }, [generateNewGraph]);
@@ -69170,6 +70636,17 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	            setPathRevealCount(step?.pathEdges.length || 0);
 	        }
 	    }, [currentStep, step?.pathEdges.length]);
+	    const regenerateSteps = reactExports.useCallback(() => {
+	        if (!graph)
+	            return;
+	        const dest = destNode >= graph.nodes.length ? graph.nodes.length - 1 : destNode;
+	        const s = graphAlgorithms[algorithm].steps(graph, startNode, dest);
+	        setSteps(s);
+	        setCurrentStep(0);
+	        setPlaying(false);
+	        setHasStarted(false);
+	        setPathRevealCount(0);
+	    }, [graph, algorithm, startNode, destNode]);
 	    const getNodeState = (nodeId) => {
 	        if (!step)
 	            return 'unvisited';
@@ -69246,10 +70723,244 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                setHasStarted(true);
 	        }
 	    };
+	    /* ---- Interactive editing handlers ---- */
+	    const getSVGCoords = (e) => {
+	        const svg = svgRef.current;
+	        if (!svg)
+	            return { x: 0, y: 0 };
+	        const rect = svg.getBoundingClientRect();
+	        const scaleX = 700 / rect.width;
+	        const scaleY = 560 / rect.height;
+	        return {
+	            x: (e.clientX - rect.left) * scaleX,
+	            y: (e.clientY - rect.top) * scaleY,
+	        };
+	    };
+	    const handleSVGMouseDown = (e) => {
+	        if (!graph)
+	            return;
+	        const coords = getSVGCoords(e);
+	        if (editMode === 'view') {
+	            const node = graph.nodes.find(n => {
+	                const dx = n.x - coords.x;
+	                const dy = n.y - coords.y;
+	                return Math.sqrt(dx * dx + dy * dy) < 25;
+	            });
+	            if (!node) {
+	                setIsPanning(true);
+	                panStart.current = { x: e.clientX, y: e.clientY };
+	                panOffsetStart.current = { x: pan.x, y: pan.y };
+	            }
+	            return;
+	        }
+	        if (editMode !== 'move' || !graph)
+	            return;
+	        const node = graph.nodes.find(n => {
+	            const dx = n.x - coords.x;
+	            const dy = n.y - coords.y;
+	            return Math.sqrt(dx * dx + dy * dy) < 25;
+	        });
+	        if (node) {
+	            setDraggingNode(node.id);
+	            setDragOffset({ x: coords.x - node.x, y: coords.y - node.y });
+	        }
+	    };
+	    const handleSVGMouseMove = (e) => {
+	        if (isPanning) {
+	            const dx = e.clientX - panStart.current.x;
+	            const dy = e.clientY - panStart.current.y;
+	            const svg = svgRef.current;
+	            if (svg) {
+	                const rect = svg.getBoundingClientRect();
+	                const scale = 700 / rect.width;
+	                setPan({
+	                    x: panOffsetStart.current.x + dx * scale,
+	                    y: panOffsetStart.current.y + dy * scale,
+	                });
+	            }
+	            return;
+	        }
+	        if (!graph)
+	            return;
+	        const coords = getSVGCoords(e);
+	        if (draggingNode !== null) {
+	            const newGraph = {
+	                ...graph,
+	                nodes: graph.nodes.map(n => n.id === draggingNode
+	                    ? { ...n, x: Math.max(20, Math.min(680, coords.x - dragOffset.x)), y: Math.max(20, Math.min(540, coords.y - dragOffset.y)) }
+	                    : n),
+	            };
+	            setGraph(newGraph);
+	            return;
+	        }
+	        const node = graph.nodes.find(n => {
+	            const dx = n.x - coords.x;
+	            const dy = n.y - coords.y;
+	            return Math.sqrt(dx * dx + dy * dy) < 25;
+	        });
+	        setHoveredNode(node ? node.id : null);
+	        const edge = graph.edges.find(e => {
+	            const from = graph.nodes.find(n => n.id === e.from);
+	            const to = graph.nodes.find(n => n.id === e.to);
+	            if (!from || !to)
+	                return false;
+	            const dx = to.x - from.x;
+	            const dy = to.y - from.y;
+	            const len = Math.sqrt(dx * dx + dy * dy);
+	            if (len < 1)
+	                return false;
+	            const t = Math.max(0, Math.min(1, ((coords.x - from.x) * dx + (coords.y - from.y) * dy) / (len * len)));
+	            const projX = from.x + t * dx;
+	            const projY = from.y + t * dy;
+	            const dist = Math.sqrt((coords.x - projX) ** 2 + (coords.y - projY) ** 2);
+	            return dist < 12;
+	        });
+	        setHoveredEdge(edge ? { from: edge.from, to: edge.to } : null);
+	    };
+	    const handleSVGMouseUp = () => {
+	        if (isPanning) {
+	            setIsPanning(false);
+	            return;
+	        }
+	        if (draggingNode !== null) {
+	            setDraggingNode(null);
+	            regenerateSteps();
+	        }
+	    };
+	    const handleSVGClick = (e) => {
+	        if (!graph)
+	            return;
+	        const coords = getSVGCoords(e);
+	        if (editMode === 'addNode') {
+	            const newId = graph.nodes.length;
+	            const newGraph = {
+	                ...graph,
+	                nodes: [...graph.nodes, { id: newId, label: `${newId}`, x: coords.x, y: coords.y, state: 'unvisited' }],
+	                edges: [...graph.edges],
+	                adjacencyList: new Map(graph.adjacencyList).set(newId, []),
+	            };
+	            setGraph(newGraph);
+	            setTimeout(() => regenerateSteps(), 0);
+	            return;
+	        }
+	        if (editMode === 'addEdge') {
+	            const node = graph.nodes.find(n => {
+	                const dx = n.x - coords.x;
+	                const dy = n.y - coords.y;
+	                return Math.sqrt(dx * dx + dy * dy) < 25;
+	            });
+	            if (!node)
+	                return;
+	            if (edgeSource === null) {
+	                setEdgeSource(node.id);
+	            }
+	            else if (edgeSource !== node.id) {
+	                const exists = graph.edges.some(e => (e.from === edgeSource && e.to === node.id) || (e.from === node.id && e.to === edgeSource));
+	                if (!exists) {
+	                    const w = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+	                    const newEdges = [...graph.edges, { from: edgeSource, to: node.id, weight: w, state: 'default' }];
+	                    const newAdj = new Map(graph.adjacencyList);
+	                    newAdj.get(edgeSource).push({ to: node.id, weight: w });
+	                    newAdj.get(node.id).push({ to: edgeSource, weight: w });
+	                    setGraph({ ...graph, edges: newEdges, adjacencyList: newAdj });
+	                    setTimeout(() => regenerateSteps(), 0);
+	                }
+	                setEdgeSource(null);
+	            }
+	            return;
+	        }
+	    };
+	    reactExports.useEffect(() => {
+	        const el = containerRef.current;
+	        if (!el)
+	            return;
+	        let lastWheel = 0;
+	        const handler = (e) => {
+	            e.preventDefault();
+	            const now = Date.now();
+	            if (now - lastWheel < 30)
+	                return;
+	            lastWheel = now;
+	            const svg = svgRef.current;
+	            if (!svg)
+	                return;
+	            const rect = svg.getBoundingClientRect();
+	            const s = 700 / rect.width;
+	            const mx = (e.clientX - rect.left) * s;
+	            const my = (e.clientY - rect.top) * s;
+	            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+	            setZoom(prev => {
+	                const newZoom = Math.max(0.25, Math.min(4, prev * factor));
+	                setPan(p => ({
+	                    x: mx - (mx - p.x) / prev * newZoom,
+	                    y: my - (my - p.y) / prev * newZoom,
+	                }));
+	                return newZoom;
+	            });
+	        };
+	        el.addEventListener('wheel', handler, { passive: false });
+	        return () => el.removeEventListener('wheel', handler);
+	    }, []);
+	    const handleNodeClick = (nodeId) => {
+	        if (!graph)
+	            return;
+	        if (editMode === 'removeNode') {
+	            const newNodes = graph.nodes.filter(n => n.id !== nodeId);
+	            const newEdges = graph.edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+	            const newAdj = new Map(graph.adjacencyList);
+	            newAdj.delete(nodeId);
+	            for (const [, list] of newAdj) {
+	                for (let i = list.length - 1; i >= 0; i--) {
+	                    if (list[i].to === nodeId)
+	                        list.splice(i, 1);
+	                }
+	            }
+	            setGraph({ nodes: newNodes, edges: newEdges, adjacencyList: newAdj });
+	            setTimeout(() => regenerateSteps(), 0);
+	        }
+	    };
+	    const handleEdgeClick = (from, to) => {
+	        if (!graph)
+	            return;
+	        if (editMode === 'removeEdge') {
+	            const newEdges = graph.edges.filter(e => !(e.from === from && e.to === to) && !(e.from === to && e.to === from));
+	            const newAdj = new Map(graph.adjacencyList);
+	            const removeFromList = (list, target) => {
+	                for (let i = list.length - 1; i >= 0; i--) {
+	                    if (list[i].to === target)
+	                        list.splice(i, 1);
+	                }
+	            };
+	            removeFromList(newAdj.get(from), to);
+	            removeFromList(newAdj.get(to), from);
+	            setGraph({ ...graph, edges: newEdges, adjacencyList: newAdj });
+	            setTimeout(() => regenerateSteps(), 0);
+	        }
+	    };
 	    if (!graph)
 	        return null;
 	    const dataStructureLabel = algorithm === 'bfs' ? 'Queue' : algorithm === 'dfs' ? 'Stack' : 'Priority Queue';
-	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Nodes:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 15, value: numNodes, onChange: e => setNumNodes(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { children: numNodes })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Start:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: startNode, onChange: e => setStartNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Dest:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: numNodes - 1, value: destNode, onChange: e => setDestNode(Number(e.target.value)), style: { width: '50px' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 100, max: 1500, value: 1600 - speed, onChange: e => setSpeed(1600 - Number(e.target.value)) })] }), jsxRuntimeExports.jsx(Button, { onClick: generateNewGraph, children: "Generate New Graph" }), jsxRuntimeExports.jsx(Button, { onClick: reset, variant: "secondary", children: "Reset" })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsx(Button, { onClick: handlePlay, children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Replay' : !hasStarted ? 'Play' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Prev Step" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next Step" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.875rem', color: 'var(--text-secondary)' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsx("div", { style: {
+	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }, children: ["Nodes:", jsxRuntimeExports.jsx("input", { type: "range", min: 3, max: 15, value: numNodes, onChange: e => setNumNodes(Number(e.target.value)) }), jsxRuntimeExports.jsx("span", { style: { fontWeight: 600 }, children: numNodes })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }, children: ["Start:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: Math.max(0, graph.nodes.length - 1), value: startNode, onChange: e => setStartNode(Number(e.target.value)), style: { width: '45px', padding: '0.2rem 0.3rem' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }, children: ["Dest:", jsxRuntimeExports.jsx("input", { type: "number", min: 0, max: Math.max(0, graph.nodes.length - 1), value: destNode, onChange: e => setDestNode(Number(e.target.value)), style: { width: '45px', padding: '0.2rem 0.3rem' } })] }), jsxRuntimeExports.jsxs("label", { style: { display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }, children: ["Speed:", jsxRuntimeExports.jsx("input", { type: "range", min: 100, max: 1500, value: 1600 - speed, onChange: e => setSpeed(1600 - Number(e.target.value)) })] }), jsxRuntimeExports.jsx(Button, { onClick: generateNewGraph, children: "Generate" }), jsxRuntimeExports.jsx(Button, { onClick: reset, variant: "secondary", children: "Reset" })] }), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.5rem' }, children: GRAPH_TYPE_BUTTONS.map(bt => (jsxRuntimeExports.jsx("button", { onClick: () => setGraphType(bt.type), style: {
+	                        padding: '0.25rem 0.6rem',
+	                        borderRadius: '0.3rem',
+	                        border: graphType === bt.type ? '2px solid var(--accent)' : '1px solid var(--border)',
+	                        background: graphType === bt.type ? 'var(--accent)' : 'var(--surface)',
+	                        color: graphType === bt.type ? '#fff' : 'var(--text-secondary)',
+	                        cursor: 'pointer',
+	                        fontWeight: graphType === bt.type ? 600 : 400,
+	                        fontSize: '0.75rem',
+	                        textTransform: 'uppercase',
+	                        letterSpacing: '0.03em',
+	                    }, children: bt.label }, bt.type))) }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }, children: [jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.3rem' }, children: [jsxRuntimeExports.jsx(Button, { onClick: handlePlay, children: playing ? 'Pause' : currentStep >= steps.length - 1 ? 'Replay' : !hasStarted ? 'Play' : 'Play' }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('prev'), disabled: currentStep <= 0, variant: "secondary", children: "Prev" }), jsxRuntimeExports.jsx(Button, { onClick: () => goToStep('next'), disabled: currentStep >= steps.length - 1, variant: "secondary", children: "Next" })] }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.8rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }, children: ["Step ", currentStep, "/", steps.length - 1] })] }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.75rem' }, children: [EDIT_BUTTONS.map(btn => (jsxRuntimeExports.jsxs("button", { onClick: () => { setEditMode(btn.mode); setEdgeSource(null); }, style: {
+	                            padding: '0.25rem 0.6rem',
+	                            borderRadius: '0.3rem',
+	                            border: editMode === btn.mode ? '2px solid #6366f1' : '1px solid var(--border)',
+	                            background: editMode === btn.mode ? 'rgba(99,102,241,0.12)' : 'var(--surface)',
+	                            color: editMode === btn.mode ? '#6366f1' : 'var(--text-secondary)',
+	                            cursor: 'pointer',
+	                            fontWeight: editMode === btn.mode ? 600 : 400,
+	                            fontSize: '0.75rem',
+	                        }, children: [btn.icon, " ", btn.label] }, btn.mode))), editMode === 'addEdge' && edgeSource !== null && (jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center' }, children: ["Click destination node for edge from ", edgeSource] }))] }), jsxRuntimeExports.jsxs("div", { ref: containerRef, style: {
 	                    width: '100%',
 	                    height: '520px',
 	                    background: 'var(--bg)',
@@ -69257,25 +70968,81 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                    border: '1px solid var(--border)',
 	                    position: 'relative',
 	                    overflow: 'hidden',
-	                }, children: jsxRuntimeExports.jsxs("svg", { className: "graph-visualizer-svg", width: "100%", height: "100%", viewBox: "0 0 700 560", children: [jsxRuntimeExports.jsxs("defs", { children: [jsxRuntimeExports.jsx("marker", { id: "arrow-exploring", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#f59e0b" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-path", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#22c55e" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-default", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "5", markerHeight: "5", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "var(--border)" }) })] }), graph.edges.map((edge, ei) => {
-	                            const from = graph.nodes[edge.from];
-	                            const to = graph.nodes[edge.to];
-	                            if (!from || !to)
-	                                return null;
-	                            const state = getEdgeState(edge.from, edge.to);
-	                            const isPath = state === 'path';
-	                            return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("line", { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: EDGE_COLORS[state] || EDGE_COLORS.default, strokeWidth: isPath ? 3 : state === 'exploring' ? 2.5 : 1, strokeDasharray: state === 'exploring' ? '6,4' : 'none', className: isPath ? 'path-edge' : state === 'exploring' ? 'exploring-edge' : undefined, markerEnd: isPath ? 'url(#arrow-path)' : state === 'exploring' ? 'url(#arrow-exploring)' : 'url(#arrow-default)' }), weighted && (jsxRuntimeExports.jsx("text", { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 8, fill: "var(--text-secondary)", fontSize: 12, textAnchor: "middle", style: { pointerEvents: 'none' }, children: edge.weight }))] }, ei));
-	                        }), graph.nodes.map(node => {
-	                            const state = getNodeState(node.id);
-	                            const isFront = isFrontier(node.id);
-	                            const isDest = isDestination(node.id);
-	                            const isStart = node.id === startNode;
-	                            const nodeDist = step?.distances.get(node.id);
-	                            const showDist = nodeDist !== undefined && nodeDist < Infinity && state !== 'unvisited';
-	                            const isBacktrack = state === 'backtrack';
-	                            const isPath = state === 'path';
-	                            return (jsxRuntimeExports.jsxs("g", { children: [isDest && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 27, fill: "none", stroke: "#eab308", strokeWidth: 2, strokeDasharray: "4,3" })), isFront && !isBacktrack && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 22, fill: "none", stroke: "#f59e0b", strokeWidth: 1.5, className: "frontier-pulse", style: { transformOrigin: `${node.x}px ${node.y}px` } })), jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: isBacktrack ? 18 : isPath ? 24 : 22, fill: isBacktrack ? 'rgba(168,130,255,0.4)' : NODE_COLORS[state] || NODE_COLORS.unvisited, stroke: isBacktrack ? '#a882ff' : isPath ? '#22c55e' : isDest ? '#eab308' : isStart ? '#6366f1' : state === 'current' ? '#ef4444' : 'transparent', strokeWidth: isBacktrack ? 2 : isPath ? 3 : isDest ? 3 : state === 'current' ? 3 : 0, style: { opacity: isBacktrack ? 0.5 : 1 } }), jsxRuntimeExports.jsx("text", { x: node.x, y: node.y + 1, fill: "#fff", fontSize: 13, textAnchor: "middle", dominantBaseline: "middle", style: { pointerEvents: 'none' }, children: node.label }), isStart && (jsxRuntimeExports.jsx("text", { x: node.x, y: node.y - 28, fill: "#6366f1", fontSize: 11, textAnchor: "middle", fontWeight: 700, children: "START" })), isDest && (jsxRuntimeExports.jsx("text", { x: node.x, y: node.y - 28, fill: "#eab308", fontSize: 11, textAnchor: "middle", fontWeight: 700, children: "DEST" })), showDist && (jsxRuntimeExports.jsxs("text", { x: node.x, y: node.y + 36, fill: "var(--text-secondary)", fontSize: 10, textAnchor: "middle", style: { pointerEvents: 'none' }, children: ["d=", nodeDist] }))] }, node.id));
-	                        })] }) }), step && (jsxRuntimeExports.jsxs("div", { style: {
+	                    cursor: isPanning ? 'grabbing' : editMode === 'view' ? 'grab' : editMode === 'move' ? 'grab' : editMode === 'addNode' ? 'crosshair' : editMode === 'addEdge' ? 'pointer' : 'default',
+	                }, children: [jsxRuntimeExports.jsx("svg", { ref: svgRef, className: "graph-visualizer-svg", width: "100%", height: "100%", viewBox: "0 0 700 560", onMouseDown: handleSVGMouseDown, onMouseMove: handleSVGMouseMove, onMouseUp: handleSVGMouseUp, onMouseLeave: () => { setIsPanning(false); setDraggingNode(null); }, onClick: handleSVGClick, style: { cursor: isPanning ? 'grabbing' : editMode === 'view' ? 'grab' : editMode === 'move' ? 'grab' : editMode === 'addNode' ? 'crosshair' : editMode === 'addEdge' ? 'pointer' : 'default' }, children: jsxRuntimeExports.jsxs("g", { transform: `translate(${pan.x}, ${pan.y}) scale(${zoom})`, children: [jsxRuntimeExports.jsxs("defs", { children: [jsxRuntimeExports.jsx("marker", { id: "arrow-exploring", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#f59e0b" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-path", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#22c55e" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-default", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "5", markerHeight: "5", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "var(--border)" }) }), jsxRuntimeExports.jsx("marker", { id: "arrow-hover", viewBox: "0 0 10 10", refX: "20", refY: "5", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: jsxRuntimeExports.jsx("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#6366f1" }) })] }), graph.edges.map((edge, ei) => {
+	                                    const from = graph.nodes.find(n => n.id === edge.from);
+	                                    const to = graph.nodes.find(n => n.id === edge.to);
+	                                    if (!from || !to)
+	                                        return null;
+	                                    const state = getEdgeState(edge.from, edge.to);
+	                                    const isHover = hoveredEdge?.from === edge.from && hoveredEdge?.to === edge.to;
+	                                    const isPath = state === 'path';
+	                                    return (jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("line", { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: "transparent", strokeWidth: 20, style: { cursor: editMode === 'removeEdge' ? 'pointer' : 'default' }, onClick: () => handleEdgeClick(edge.from, edge.to), onMouseEnter: () => setHoveredEdge({ from: edge.from, to: edge.to }), onMouseLeave: () => setHoveredEdge(null) }), jsxRuntimeExports.jsx("line", { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: isHover ? '#6366f1' : EDGE_COLORS[state] || EDGE_COLORS.default, strokeWidth: isHover ? 3.5 : isPath ? 3 : state === 'exploring' ? 2.5 : 1.5, strokeDasharray: state === 'exploring' ? '6,4' : 'none', className: isPath ? 'path-edge' : state === 'exploring' ? 'exploring-edge' : undefined, markerEnd: isHover ? 'url(#arrow-hover)' :
+	                                                    isPath ? 'url(#arrow-path)' :
+	                                                        state === 'exploring' ? 'url(#arrow-exploring)' :
+	                                                            'url(#arrow-default)' }), jsxRuntimeExports.jsxs("g", { children: [jsxRuntimeExports.jsx("rect", { x: (from.x + to.x) / 2 - 10, y: (from.y + to.y) / 2 - 14, width: 20, height: 18, rx: 9, ry: 9, fill: isHover ? 'rgba(99,102,241,0.15)' : 'var(--bg)', stroke: isHover ? '#6366f1' : 'var(--border)', strokeWidth: 0.5 }), jsxRuntimeExports.jsx("text", { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 1, fill: isHover ? '#6366f1' : 'var(--text-secondary)', fontSize: 11, fontWeight: 600, textAnchor: "middle", dominantBaseline: "middle", style: { pointerEvents: 'none' }, children: edge.weight })] })] }, ei));
+	                                }), graph.nodes.map(node => {
+	                                    const state = getNodeState(node.id);
+	                                    const isFront = isFrontier(node.id);
+	                                    const isDest = isDestination(node.id);
+	                                    const isStart = node.id === startNode;
+	                                    const isHover = hoveredNode === node.id;
+	                                    const isEdgeSource = edgeSource === node.id;
+	                                    const nodeDist = step?.distances.get(node.id);
+	                                    const showDist = nodeDist !== undefined && nodeDist < Infinity && state !== 'unvisited';
+	                                    const isBacktrack = state === 'backtrack';
+	                                    const isPath = state === 'path';
+	                                    return (jsxRuntimeExports.jsxs("g", { children: [isDest && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 27, fill: "none", stroke: "#eab308", strokeWidth: 2, strokeDasharray: "4,3" })), isFront && !isBacktrack && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 22, fill: "none", stroke: "#f59e0b", strokeWidth: 1.5, className: "frontier-pulse", style: { transformOrigin: `${node.x}px ${node.y}px` } })), isHover && editMode === 'move' && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 26, fill: "none", stroke: "#6366f1", strokeWidth: 2, strokeDasharray: "3,2" })), isEdgeSource && (jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: 26, fill: "none", stroke: "#f59e0b", strokeWidth: 2.5 })), jsxRuntimeExports.jsx("circle", { cx: node.x, cy: node.y, r: isPath ? 24 : 22, fill: isHover && editMode === 'removeNode'
+	                                                    ? 'rgba(239,68,68,0.5)'
+	                                                    : isBacktrack
+	                                                        ? 'rgba(168,130,255,0.4)'
+	                                                        : NODE_COLORS[state] || NODE_COLORS.unvisited, stroke: isHover && editMode === 'removeNode' ? '#ef4444' :
+	                                                    isBacktrack ? '#a882ff' :
+	                                                        isPath ? '#22c55e' :
+	                                                            isDest ? '#eab308' :
+	                                                                isStart ? '#6366f1' :
+	                                                                    state === 'current' ? '#ef4444' :
+	                                                                        'transparent', strokeWidth: isHover && editMode === 'removeNode' ? 3 :
+	                                                    isBacktrack ? 2 :
+	                                                        isPath ? 3 :
+	                                                            isDest ? 3 :
+	                                                                state === 'current' ? 3 :
+	                                                                    0, style: {
+	                                                    opacity: isBacktrack ? 0.5 : 1,
+	                                                    cursor: editMode === 'move' ? 'grab' :
+	                                                        editMode === 'removeNode' ? 'pointer' :
+	                                                            editMode === 'addEdge' ? 'pointer' :
+	                                                                'default',
+	                                                }, onMouseDown: e => { e.stopPropagation(); handleSVGMouseDown(e); }, onClick: e => { e.stopPropagation(); handleNodeClick(node.id); }, onMouseEnter: () => setHoveredNode(node.id), onMouseLeave: () => setHoveredNode(null) }), jsxRuntimeExports.jsx("text", { x: node.x, y: node.y + 1, fill: "#fff", fontSize: 13, textAnchor: "middle", dominantBaseline: "middle", style: { pointerEvents: 'none' }, children: node.label }), isStart && (jsxRuntimeExports.jsx("text", { x: node.x, y: node.y - 28, fill: "#6366f1", fontSize: 11, textAnchor: "middle", fontWeight: 700, children: "START" })), isDest && (jsxRuntimeExports.jsx("text", { x: node.x, y: node.y - 28, fill: "#eab308", fontSize: 11, textAnchor: "middle", fontWeight: 700, children: "DEST" })), showDist && (jsxRuntimeExports.jsxs("text", { x: node.x, y: node.y + 36, fill: "var(--text-secondary)", fontSize: 10, textAnchor: "middle", style: { pointerEvents: 'none' }, children: ["d=", nodeDist] }))] }, node.id));
+	                                })] }) }), jsxRuntimeExports.jsxs("div", { style: {
+	                            position: 'absolute',
+	                            bottom: '0.5rem',
+	                            right: '0.5rem',
+	                            display: 'flex',
+	                            alignItems: 'center',
+	                            gap: '0.25rem',
+	                            background: 'var(--surface)',
+	                            border: '1px solid var(--border)',
+	                            borderRadius: '0.375rem',
+	                            padding: '0.2rem',
+	                            opacity: 0.8,
+	                        }, children: [jsxRuntimeExports.jsx("button", { onClick: () => {
+	                                    const newZoom = Math.max(0.25, zoom / 1.3);
+	                                    const mx = 350, my = 260;
+	                                    setPan(prev => ({
+	                                        x: mx - (mx - prev.x) / zoom * newZoom,
+	                                        y: my - (my - prev.y) / zoom * newZoom,
+	                                    }));
+	                                    setZoom(newZoom);
+	                                }, style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '1rem', padding: '0.1rem 0.35rem', lineHeight: 1 }, title: "Zoom out", children: "-" }), jsxRuntimeExports.jsxs("span", { style: { fontSize: '0.7rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', minWidth: '2.5rem', textAlign: 'center' }, children: [Math.round(zoom * 100), "%"] }), jsxRuntimeExports.jsx("button", { onClick: () => {
+	                                    const newZoom = Math.min(4, zoom * 1.3);
+	                                    const mx = 350, my = 260;
+	                                    setPan(prev => ({
+	                                        x: mx - (mx - prev.x) / zoom * newZoom,
+	                                        y: my - (my - prev.y) / zoom * newZoom,
+	                                    }));
+	                                    setZoom(newZoom);
+	                                }, style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '1rem', padding: '0.1rem 0.35rem', lineHeight: 1 }, title: "Zoom in", children: "+" }), jsxRuntimeExports.jsx("button", { onClick: () => { setZoom(1); setPan({ x: 0, y: 0 }); }, style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.65rem', padding: '0.1rem 0.3rem', lineHeight: 1 }, title: "Reset zoom", children: "\u21BA" })] })] }), step && (jsxRuntimeExports.jsxs("div", { style: {
 	                    marginTop: '0.75rem',
 	                    padding: '0.75rem 1rem',
 	                    borderRadius: '0.5rem',
@@ -69291,89 +71058,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
 	                            color: step.phase === 'backtracking' ? '#a882ff' : step.phase === 'path-found' ? '#22c55e' : 'var(--text-secondary)',
 	                            fontWeight: 600,
 	                            flexShrink: 0,
-	                        }, children: step.phase }))] })), step && (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }, children: [jsxRuntimeExports.jsxs("div", { style: {
-	                            padding: '0.5rem 1rem',
-	                            borderRadius: '0.375rem',
-	                            background: 'var(--surface)',
-	                            border: '1px solid var(--border)',
-	                            fontSize: '0.8rem',
-	                        }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: dataStructureLabel }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: [algorithm === 'bfs' && (step.queue.length > 0 ? step.queue.map((n, i) => (jsxRuntimeExports.jsx("span", { style: {
-	                                            display: 'inline-flex',
-	                                            alignItems: 'center',
-	                                            justifyContent: 'center',
-	                                            minWidth: '24px',
-	                                            height: '24px',
-	                                            padding: '0 6px',
-	                                            borderRadius: '4px',
-	                                            background: 'rgba(245,158,11,0.15)',
-	                                            color: '#f59e0b',
-	                                            fontWeight: 600,
-	                                            fontSize: '0.75rem',
-	                                            fontFamily: 'monospace',
-	                                        }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" })), algorithm === 'dfs' && (step.stack.length > 0 ? step.stack.map((n, i) => (jsxRuntimeExports.jsx("span", { style: {
-	                                            display: 'inline-flex',
-	                                            alignItems: 'center',
-	                                            justifyContent: 'center',
-	                                            minWidth: '24px',
-	                                            height: '24px',
-	                                            padding: '0 6px',
-	                                            borderRadius: '4px',
-	                                            background: 'rgba(245,158,11,0.15)',
-	                                            color: '#f59e0b',
-	                                            fontWeight: 600,
-	                                            fontSize: '0.75rem',
-	                                            fontFamily: 'monospace',
-	                                        }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" })), algorithm === 'dijkstra' && (step.priorityQueue.length > 0 ? step.priorityQueue.map((e, i) => (jsxRuntimeExports.jsxs("span", { style: {
-	                                            display: 'inline-flex',
-	                                            alignItems: 'center',
-	                                            gap: '2px',
-	                                            height: '24px',
-	                                            padding: '0 6px',
-	                                            borderRadius: '4px',
-	                                            background: 'rgba(245,158,11,0.15)',
-	                                            color: '#f59e0b',
-	                                            fontWeight: 600,
-	                                            fontSize: '0.75rem',
-	                                            fontFamily: 'monospace',
-	                                        }, children: [jsxRuntimeExports.jsx("span", { children: e.node }), jsxRuntimeExports.jsxs("span", { style: { color: 'rgba(245,158,11,0.6)' }, children: ["(", e.dist, ")"] })] }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" }))] })] }), jsxRuntimeExports.jsxs("div", { style: {
-	                            padding: '0.5rem 1rem',
-	                            borderRadius: '0.375rem',
-	                            background: 'var(--surface)',
-	                            border: '1px solid var(--border)',
-	                            fontSize: '0.8rem',
-	                        }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: "Visited" }), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: step.visitedNodes.length > 0 ? step.visitedNodes.map((n, i) => (jsxRuntimeExports.jsx("span", { style: {
-	                                        display: 'inline-flex',
-	                                        alignItems: 'center',
-	                                        justifyContent: 'center',
-	                                        minWidth: '24px',
-	                                        height: '24px',
-	                                        padding: '0 6px',
-	                                        borderRadius: '4px',
-	                                        background: 'rgba(59,130,246,0.15)',
-	                                        color: '#3b82f6',
-	                                        fontWeight: 600,
-	                                        fontSize: '0.75rem',
-	                                        fontFamily: 'monospace',
-	                                    }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "none" }) })] }), jsxRuntimeExports.jsxs("div", { style: {
-	                            padding: '0.5rem 1rem',
-	                            borderRadius: '0.375rem',
-	                            background: 'var(--surface)',
-	                            border: '1px solid var(--border)',
-	                            fontSize: '0.8rem',
-	                        }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: "Distances" }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: [Array.from(step.distances.entries())
-	                                        .filter(([, d]) => d < Infinity)
-	                                        .map(([n, d]) => (jsxRuntimeExports.jsxs("span", { style: {
-	                                            display: 'inline-flex',
-	                                            alignItems: 'center',
-	                                            gap: '2px',
-	                                            height: '24px',
-	                                            padding: '0 6px',
-	                                            borderRadius: '4px',
-	                                            background: 'rgba(99,102,241,0.1)',
-	                                            color: 'var(--text-secondary)',
-	                                            fontSize: '0.75rem',
-	                                            fontFamily: 'monospace',
-	                                        }, children: [jsxRuntimeExports.jsxs("span", { style: { color: 'var(--text)' }, children: [n, ":"] }), jsxRuntimeExports.jsx("span", { children: d })] }, n))), Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).length === 0 && (jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "none" }))] })] })] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }, children: Object.entries(NODE_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '12px', height: '12px', background: color, borderRadius: '50%', display: 'inline-block' } }), state] }, state))) }), jsxRuntimeExports.jsx(StepHistoryTable, { steps: steps, currentStep: currentStep, algorithm: algorithm, onJumpToStep: jumpToStep, hasStarted: hasStarted, playing: playing })] }));
+	                        }, children: step.phase }))] })), step && (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }, children: [jsxRuntimeExports.jsxs("div", { style: { padding: '0.5rem 1rem', borderRadius: '0.375rem', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem' }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: dataStructureLabel }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: [algorithm === 'bfs' && (step.queue.length > 0 ? step.queue.map((n, i) => (jsxRuntimeExports.jsx("span", { style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" })), algorithm === 'dfs' && (step.stack.length > 0 ? step.stack.map((n, i) => (jsxRuntimeExports.jsx("span", { style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" })), algorithm === 'dijkstra' && (step.priorityQueue.length > 0 ? step.priorityQueue.map((e, i) => (jsxRuntimeExports.jsxs("span", { style: { display: 'inline-flex', alignItems: 'center', gap: '2px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }, children: [jsxRuntimeExports.jsx("span", { children: e.node }), jsxRuntimeExports.jsxs("span", { style: { color: 'rgba(245,158,11,0.6)' }, children: ["(", e.dist, ")"] })] }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "empty" }))] })] }), jsxRuntimeExports.jsxs("div", { style: { padding: '0.5rem 1rem', borderRadius: '0.375rem', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem' }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: "Visited" }), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: step.visitedNodes.length > 0 ? step.visitedNodes.map((n, i) => (jsxRuntimeExports.jsx("span", { style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }, children: n }, i))) : jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "none" }) })] }), jsxRuntimeExports.jsxs("div", { style: { padding: '0.5rem 1rem', borderRadius: '0.375rem', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem' }, children: [jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }, children: "Distances" }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }, children: [Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).map(([n, d]) => (jsxRuntimeExports.jsxs("span", { style: { display: 'inline-flex', alignItems: 'center', gap: '2px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: 'var(--text-secondary)', fontSize: '0.75rem', fontFamily: 'monospace' }, children: [jsxRuntimeExports.jsxs("span", { style: { color: 'var(--text)' }, children: [n, ":"] }), jsxRuntimeExports.jsx("span", { children: d })] }, n))), Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).length === 0 && (jsxRuntimeExports.jsx("span", { style: { color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }, children: "none" }))] })] })] })), jsxRuntimeExports.jsx("div", { style: { display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }, children: Object.entries(NODE_COLORS).map(([state, color]) => (jsxRuntimeExports.jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem' }, children: [jsxRuntimeExports.jsx("span", { style: { width: '12px', height: '12px', background: color, borderRadius: '50%', display: 'inline-block' } }), state] }, state))) }), jsxRuntimeExports.jsx(StepHistoryTable, { steps: steps, currentStep: currentStep, algorithm: algorithm, onJumpToStep: jumpToStep, hasStarted: hasStarted, playing: playing })] }));
 	}
 
 	const GRAPH_ALGORITHM_KEYS = ['bfs', 'dfs', 'dijkstra'];

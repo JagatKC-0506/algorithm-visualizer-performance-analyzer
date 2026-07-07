@@ -1,5 +1,6 @@
 export type AlgorithmType = 'bubble' | 'selection' | 'insertion' | 'merge' | 'quick' | 'heap';
 export type GraphAlgorithmType = 'bfs' | 'dfs' | 'dijkstra';
+export type GraphGenerationType = 'random' | 'grid' | 'tree' | 'complete' | 'disconnected';
 export type ComplexityCase = 'best' | 'average' | 'worst';
 export type ArrayType = 'random' | 'nearly-sorted' | 'reverse-sorted' | 'custom';
 export type ElementState = 'default' | 'comparing' | 'swapping' | 'sorted' | 'current' | 'pivot' | 'subarray' | 'merging';

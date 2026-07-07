@@ -15,6 +15,7 @@ export function selectionSortSteps(arr: number[]): SortingVisualizerStep[] {
         swapping: [],
         sorted,
         current: i,
+        subarray: { start: i, end: n },
         description: `Finding minimum: comparing a[${j}] = ${a[j]} with current min a[${minIdx}] = ${a[minIdx]}`,
       });
       if (a[j] < a[minIdx]) {
@@ -29,6 +30,7 @@ export function selectionSortSteps(arr: number[]): SortingVisualizerStep[] {
         swapping: [i, minIdx],
         sorted: sorted,
         current: i,
+        subarray: { start: i, end: n },
         description: `Swapped a[${i}] with a[${minIdx}]: ${a[i]} ↔ ${a[minIdx]}`,
       });
     }

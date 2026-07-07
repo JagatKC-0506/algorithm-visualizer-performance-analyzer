@@ -17,6 +17,7 @@ export function bubbleSortSteps(arr: number[]): SortingVisualizerStep[] {
         swapping: [],
         sorted: a.slice(n - i).map((_, idx) => n - i + idx),
         current: j,
+        subarray: { start: 0, end: n - i },
         description: `Comparing a[${j}] = ${a[j]} and a[${j + 1}] = ${a[j + 1]}`,
       });
       if (a[j] > a[j + 1]) {
@@ -28,6 +29,7 @@ export function bubbleSortSteps(arr: number[]): SortingVisualizerStep[] {
           swapping: [j, j + 1],
           sorted: a.slice(n - i).map((_, idx) => n - i + idx),
           current: j + 1,
+          subarray: { start: 0, end: n - i },
           description: `Swapped a[${j}] and a[${j + 1}]`,
         });
         swapped = true;
@@ -40,6 +42,7 @@ export function bubbleSortSteps(arr: number[]): SortingVisualizerStep[] {
         swapping: [],
         sorted: a.map((_, idx) => idx),
         current: -1,
+        subarray: { start: 0, end: n },
         description: 'No swaps in this pass. Array is sorted!',
       });
       break;

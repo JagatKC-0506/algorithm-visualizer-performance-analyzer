@@ -163,6 +163,36 @@ input[type='number'] {
   100% { opacity: 0.5; }
 }
 
+@keyframes nodeEnter {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes nodePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 8px var(--border-color); }
+  50%      { transform: scale(1.04); box-shadow: 0 0 20px var(--border-color); }
+}
+
+@keyframes lineGrowVertical {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+@keyframes lineGrowHorizontal {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes valueSwapIn {
+  0%   { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes linePulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
 .step-table-row:hover {
   background: var(--accent-alpha);
 }
@@ -185,6 +215,27 @@ input[type='number'] {
 pre {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+@keyframes comparePulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(245,158,11,0.3), 0 0 12px rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.5); }
+  50%      { box-shadow: 0 0 10px rgba(245,158,11,0.6), 0 0 24px rgba(245,158,11,0.3); border-color: rgba(245,158,11,0.95); }
+}
+
+@keyframes shiftPush {
+  0%   { transform: translateX(0); }
+  35%  { transform: translateX(30px); box-shadow: 30px 0 8px rgba(59,130,246,0.1); }
+  100% { transform: translateX(0); box-shadow: 0 0 0 transparent; }
+}
+
+@keyframes swapArrive {
+  from { transform: translateX(var(--swap-from, 0)); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes gapPulse {
+  0%, 100% { border-color: rgba(59,130,246,0.4); box-shadow: 0 0 6px rgba(59,130,246,0.2); }
+  50%      { border-color: rgba(59,130,246,0.9); box-shadow: 0 0 14px rgba(59,130,246,0.5); }
 }
 
 table {

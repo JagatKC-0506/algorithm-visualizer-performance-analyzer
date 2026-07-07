@@ -8,46 +8,56 @@ export function insertionSortSteps(arr: number[]): SortingVisualizerStep[] {
   for (let i = 1; i < n; i++) {
     const key = a[i];
     let j = i - 1;
+    const sortedBefore = a.slice(0, i).map((_, idx) => idx);
+
     steps.push({
       array: [...a],
       comparing: [i],
       swapping: [],
-      sorted: [],
+      sorted: sortedBefore,
       current: i,
-      description: `Picking element a[${i}] = ${key} to insert into sorted portion`,
+      subarray: { start: 0, end: i + 1 },
+      description: `Pick a[${i}] = ${key} to insert into sorted portion [0..${i - 1}]`,
     });
+
     while (j >= 0 && a[j] > key) {
       steps.push({
         array: [...a],
-        comparing: [j, j + 1],
+        comparing: [j],
         swapping: [],
-        sorted: [],
-        current: j,
-        description: `a[${j}] = ${a[j]} > ${key}, shifting right`,
+        sorted: sortedBefore,
+        current: j + 1,
+        subarray: { start: j, end: i + 1 },
+        description: `a[${j}] = ${a[j]} > key ${key}  →  shift a[${j}] right`,
       });
+
       a[j + 1] = a[j];
       steps.push({
         array: [...a],
         comparing: [],
         swapping: [j, j + 1],
-        sorted: [],
-        current: j + 1,
-        description: `Shifted a[${j}] to position ${j + 1}`,
+        sorted: sortedBefore,
+        current: j,
+        subarray: { start: j, end: i + 1 },
+        description: `Shifted a[${j}] → a[${j + 1}]   (gap now at ${j})`,
       });
       j--;
     }
+
     if (j + 1 !== i) {
       a[j + 1] = key;
-      steps.push({
-        array: [...a],
-        comparing: [],
-        swapping: [],
-        sorted: a.slice(0, i + 1).map((_, idx) => idx),
-        current: j + 1,
-        description: `Inserted ${key} at position ${j + 1}`,
-      });
     }
+    steps.push({
+      array: [...a],
+      comparing: [],
+      swapping: [],
+      sorted: a.slice(0, i + 1).map((_, idx) => idx),
+      current: j + 1,
+      subarray: { start: 0, end: i + 1 },
+      description: `Inserted ${key} at position ${j + 1}  →  [0..${i}] now sorted`,
+    });
   }
+
   steps.push({
     array: [...a],
     comparing: [],
