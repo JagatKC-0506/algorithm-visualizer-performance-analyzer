@@ -46,6 +46,15 @@ export interface GraphData {
   adjacencyList: Map<number, { to: number; weight: number }[]>;
 }
 
+export interface RelaxationInfo {
+  from: number;
+  to: number;
+  weight: number;
+  oldDist: number;
+  newDist: number;
+  updated: boolean;
+}
+
 export interface GraphStep {
   visitedNodes: number[];
   currentNode: number;
@@ -57,6 +66,12 @@ export interface GraphStep {
   distances: Map<number, number>;
   description: string;
   phase?: 'exploring' | 'backtracking' | 'path-found' | 'complete';
+  pseudocodeLine: number;
+  levels: Map<number, number>;
+  parent: Map<number, number | null>;
+  traversalOrder: number[];
+  logEntries: string[];
+  relaxation?: RelaxationInfo | null;
 }
 
 export interface GraphMetrics {

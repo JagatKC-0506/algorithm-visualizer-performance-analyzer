@@ -123,20 +123,16 @@ function generateRandomGraph(numNodes: number, weighted: boolean): GraphData {
   const edges: GraphEdge[] = [];
   const adjacencyList = makeAdjList(numNodes);
 
+  const edgeProbability = Math.min(0.45, 2.5 / numNodes);
+
   for (let i = 0; i < numNodes; i++) {
-    const numEdges = Math.min(2 + Math.floor(Math.random() * Math.max(2, numNodes / 3)), numNodes - 1);
-    const candidates: number[] = [];
-    for (let j = 0; j < numNodes; j++) {
-      if (j !== i && !adjacencyList.get(i)!.some(e => e.to === j)) candidates.push(j);
-    }
-    const shuffled = candidates.sort(() => Math.random() - 0.5);
-    const toAdd = Math.min(numEdges, shuffled.length);
-    for (let k = 0; k < toAdd; k++) {
-      const j = shuffled[k];
-      const weight = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
-      edges.push({ from: i, to: j, weight, state: 'default' });
-      adjacencyList.get(i)!.push({ to: j, weight });
-      adjacencyList.get(j)!.push({ to: i, weight });
+    for (let j = i + 1; j < numNodes; j++) {
+      if (Math.random() < edgeProbability) {
+        const weight = weighted ? Math.floor(Math.random() * 9) + 1 : 1;
+        edges.push({ from: i, to: j, weight, state: 'default' });
+        adjacencyList.get(i)!.push({ to: j, weight });
+        adjacencyList.get(j)!.push({ to: i, weight });
+      }
     }
   }
 

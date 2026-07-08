@@ -1,9 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from 'react';
 import type { GraphAlgorithmType, GraphGenerationType, GraphData, GraphStep } from '../../types';
 import { graphAlgorithms } from '../../algorithms/graph';
 import { generateGraph } from '../../algorithms/graph/generator';
 import Button from '../common/Button';
 import StepHistoryTable from './StepHistoryTable';
+import QueuePanel from './QueuePanel';
+import StackPanel from './StackPanel';
+import PriorityQueuePanel from './PriorityQueuePanel';
+import VisitedPanel from './VisitedPanel';
+import TraversalPanel from './TraversalPanel';
+import EventLogPanel from './EventLogPanel';
+import PseudocodePanel from './PseudocodePanel';
+import DistanceTable from './DistanceTable';
+import ParentTable from './ParentTable';
+import RelaxationPanel from './RelaxationPanel';
+import ShortestPathPanel from './ShortestPathPanel';
+import LevelPanel from './LevelPanel';
 
 interface Props {
   algorithm: GraphAlgorithmType;
@@ -58,6 +70,33 @@ const GRAPH_TYPE_BUTTONS: { type: GraphGenerationType; label: string }[] = [
   { type: 'disconnected', label: 'Disconnected' },
 ];
 
+const BFS_PSEUDOCODE = [
+  'enqueue(start)',
+  'mark start visited',
+  'while queue not empty',
+  '  node = dequeue()',
+  '  for each neighbour',
+  '    enqueue(neighbour)',
+];
+
+const DFS_PSEUDOCODE = [
+  'push(start)',
+  'while stack not empty',
+  '  node = pop()',
+  '  if node not visited',
+  '    mark visited',
+  '    push neighbours',
+];
+
+const DIJKSTRA_PSEUDOCODE = [
+  'dist[start] = 0',
+  'push(start)',
+  'while priority queue not empty',
+  '  u = extractMin()',
+  '  for each neighbour v',
+  '    relax(u, v)',
+];
+
 export default function GraphVisualizer({ algorithm }: Props) {
   const [numNodes, setNumNodes] = useState(8);
   const [startNode, setStartNode] = useState(0);
@@ -91,24 +130,35 @@ export default function GraphVisualizer({ algorithm }: Props) {
 
   const weighted = algorithm === 'dijkstra';
 
+  const pseudocode = algorithm === 'bfs' ? BFS_PSEUDOCODE : algorithm === 'dfs' ? DFS_PSEUDOCODE : DIJKSTRA_PSEUDOCODE;
+
   const generateNewGraph = useCallback(() => {
     if (pathTimerRef.current) clearInterval(pathTimerRef.current);
     const g = generateGraph(numNodes, weighted, graphType);
     setGraph(g);
-    const dest = destNode >= numNodes ? numNodes - 1 : destNode;
-    if (destNode >= numNodes) setDestNode(Math.max(0, numNodes - 1));
-    const s = graphAlgorithms[algorithm].steps(g, startNode, dest);
+    const s = graphAlgorithms[algorithm].steps(g, startNode, destNode >= numNodes ? numNodes - 1 : destNode);
     setSteps(s);
     setCurrentStep(0);
     setPlaying(false);
     setHasStarted(false);
     setPathRevealCount(0);
     setEdgeSource(null);
-  }, [numNodes, startNode, destNode, algorithm, weighted, graphType]);
+  }, [numNodes, algorithm, weighted, graphType]);
 
   useEffect(() => {
     generateNewGraph();
   }, [generateNewGraph]);
+
+  useEffect(() => {
+    if (!graph) return;
+    const dest = destNode >= graph.nodes.length ? graph.nodes.length - 1 : destNode;
+    const s = graphAlgorithms[algorithm].steps(graph, startNode, dest);
+    setSteps(s);
+    setCurrentStep(0);
+    setPlaying(false);
+    setHasStarted(false);
+    setPathRevealCount(0);
+  }, [startNode, destNode]);
 
   useEffect(() => {
     if (playing && currentStep < steps.length - 1) {
@@ -455,6 +505,11 @@ export default function GraphVisualizer({ algorithm }: Props) {
 
   const dataStructureLabel = algorithm === 'bfs' ? 'Queue' : algorithm === 'dfs' ? 'Stack' : 'Priority Queue';
 
+  const panelStyle: CSSProperties = {
+    minWidth: 0,
+    overflow: 'hidden',
+  };
+
   return (
     <div>
       {/* Controls Row */}
@@ -545,20 +600,20 @@ export default function GraphVisualizer({ algorithm }: Props) {
         )}
       </div>
 
-      {/* SVG */}
-        <div
-          ref={containerRef}
-          style={{
-            width: '100%',
-            height: '520px',
-            background: 'var(--bg)',
-            borderRadius: '0.5rem',
-            border: '1px solid var(--border)',
-            position: 'relative',
-            overflow: 'hidden',
-            cursor: isPanning ? 'grabbing' : editMode === 'view' ? 'grab' : editMode === 'move' ? 'grab' : editMode === 'addNode' ? 'crosshair' : editMode === 'addEdge' ? 'pointer' : 'default',
-          }}
-        >
+      {/* SVG Canvas */}
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '520px',
+          background: 'var(--bg)',
+          borderRadius: '0.5rem',
+          border: '1px solid var(--border)',
+          position: 'relative',
+          overflow: 'hidden',
+          cursor: isPanning ? 'grabbing' : editMode === 'view' ? 'grab' : editMode === 'move' ? 'grab' : editMode === 'addNode' ? 'crosshair' : editMode === 'addEdge' ? 'pointer' : 'default',
+        }}
+      >
         <svg
           ref={svgRef}
           className="graph-visualizer-svg"
@@ -572,216 +627,205 @@ export default function GraphVisualizer({ algorithm }: Props) {
           style={{ cursor: isPanning ? 'grabbing' : editMode === 'view' ? 'grab' : editMode === 'move' ? 'grab' : editMode === 'addNode' ? 'crosshair' : editMode === 'addEdge' ? 'pointer' : 'default' }}
         >
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-          <defs>
-            <marker id="arrow-exploring" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
-            </marker>
-            <marker id="arrow-path" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
-            </marker>
-            <marker id="arrow-default" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border)" />
-            </marker>
-            <marker id="arrow-hover" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
-            </marker>
-          </defs>
+            <defs>
+              <marker id="arrow-exploring" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
+              </marker>
+              <marker id="arrow-path" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
+              </marker>
+              <marker id="arrow-default" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border)" />
+              </marker>
+              <marker id="arrow-hover" viewBox="0 0 10 10" refX="20" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+              </marker>
+            </defs>
 
-          {/* Edges */}
-          {graph.edges.map((edge, ei) => {
-            const from = graph.nodes.find(n => n.id === edge.from);
-            const to = graph.nodes.find(n => n.id === edge.to);
-            if (!from || !to) return null;
-            const state = getEdgeState(edge.from, edge.to);
-            const isHover = hoveredEdge?.from === edge.from && hoveredEdge?.to === edge.to;
-            const isPath = state === 'path';
+            {/* Edges */}
+            {graph.edges.map((edge, ei) => {
+              const from = graph.nodes.find(n => n.id === edge.from);
+              const to = graph.nodes.find(n => n.id === edge.to);
+              if (!from || !to) return null;
+              const state = getEdgeState(edge.from, edge.to);
+              const isHover = hoveredEdge?.from === edge.from && hoveredEdge?.to === edge.to;
+              const isPath = state === 'path';
 
-            return (
-              <g key={ei}>
-                {/* Invisible wider line for click/hover */}
-                <line
-                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                  stroke="transparent" strokeWidth={20}
-                  style={{ cursor: editMode === 'removeEdge' ? 'pointer' : 'default' }}
-                  onClick={() => handleEdgeClick(edge.from, edge.to)}
-                  onMouseEnter={() => setHoveredEdge({ from: edge.from, to: edge.to })}
-                  onMouseLeave={() => setHoveredEdge(null)}
-                />
-                <line
-                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                  stroke={isHover ? '#6366f1' : EDGE_COLORS[state] || EDGE_COLORS.default}
-                  strokeWidth={isHover ? 3.5 : isPath ? 3 : state === 'exploring' ? 2.5 : 1.5}
-                  strokeDasharray={state === 'exploring' ? '6,4' : 'none'}
-                  className={isPath ? 'path-edge' : state === 'exploring' ? 'exploring-edge' : undefined}
-                  markerEnd={
-                    isHover ? 'url(#arrow-hover)' :
-                    isPath ? 'url(#arrow-path)' :
-                    state === 'exploring' ? 'url(#arrow-exploring)' :
-                    'url(#arrow-default)'
-                  }
-                />
-                {/* Weight label with pill background */}
-                <g>
-                  <rect
-                    x={(from.x + to.x) / 2 - 10}
-                    y={(from.y + to.y) / 2 - 14}
-                    width={20} height={18}
-                    rx={9} ry={9}
-                    fill={isHover ? 'rgba(99,102,241,0.15)' : 'var(--bg)'}
-                    stroke={isHover ? '#6366f1' : 'var(--border)'}
-                    strokeWidth={0.5}
+              return (
+                <g key={ei}>
+                  <line
+                    x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                    stroke="transparent" strokeWidth={20}
+                    style={{ cursor: editMode === 'removeEdge' ? 'pointer' : 'default' }}
+                    onClick={() => handleEdgeClick(edge.from, edge.to)}
+                    onMouseEnter={() => setHoveredEdge({ from: edge.from, to: edge.to })}
+                    onMouseLeave={() => setHoveredEdge(null)}
                   />
+                  <line
+                    x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                    stroke={isHover ? '#6366f1' : EDGE_COLORS[state] || EDGE_COLORS.default}
+                    strokeWidth={isHover ? 3.5 : isPath ? 3 : state === 'exploring' ? 2.5 : 1.5}
+                    strokeDasharray={state === 'exploring' ? '6,4' : 'none'}
+                    className={isPath ? 'path-edge' : state === 'exploring' ? 'exploring-edge' : undefined}
+                    markerEnd={
+                      isHover ? 'url(#arrow-hover)' :
+                      isPath ? 'url(#arrow-path)' :
+                      state === 'exploring' ? 'url(#arrow-exploring)' :
+                      'url(#arrow-default)'
+                    }
+                  />
+                  <g>
+                    <rect
+                      x={(from.x + to.x) / 2 - 10}
+                      y={(from.y + to.y) / 2 - 14}
+                      width={20} height={18}
+                      rx={9} ry={9}
+                      fill={isHover ? 'rgba(99,102,241,0.15)' : 'var(--bg)'}
+                      stroke={isHover ? '#6366f1' : 'var(--border)'}
+                      strokeWidth={0.5}
+                    />
+                    <text
+                      x={(from.x + to.x) / 2}
+                      y={(from.y + to.y) / 2 - 1}
+                      fill={isHover ? '#6366f1' : 'var(--text-secondary)'}
+                      fontSize={11}
+                      fontWeight={600}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {edge.weight}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
+
+            {/* Nodes */}
+            {graph.nodes.map(node => {
+              const state = getNodeState(node.id);
+              const isFront = isFrontier(node.id);
+              const isDest = isDestination(node.id);
+              const isStart = node.id === startNode;
+              const isHover = hoveredNode === node.id;
+              const isEdgeSource = edgeSource === node.id;
+              const nodeDist = step?.distances.get(node.id);
+              const showDist = nodeDist !== undefined && nodeDist < Infinity && state !== 'unvisited';
+              const isBacktrack = state === 'backtrack';
+              const isPath = state === 'path';
+
+              return (
+                <g key={node.id}>
+                  {isDest && (
+                    <circle
+                      cx={node.x} cy={node.y} r={27}
+                      fill="none"
+                      stroke="#eab308"
+                      strokeWidth={2}
+                      strokeDasharray="4,3"
+                    />
+                  )}
+
+                  {isFront && !isBacktrack && (
+                    <circle
+                      cx={node.x} cy={node.y} r={22}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth={1.5}
+                      className="frontier-pulse"
+                      style={{ transformOrigin: `${node.x}px ${node.y}px` }}
+                    />
+                  )}
+
+                  {isHover && editMode === 'move' && (
+                    <circle
+                      cx={node.x} cy={node.y} r={26}
+                      fill="none"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      strokeDasharray="3,2"
+                    />
+                  )}
+
+                  {isEdgeSource && (
+                    <circle
+                      cx={node.x} cy={node.y} r={26}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth={2.5}
+                    />
+                  )}
+
+                  <circle
+                    cx={node.x} cy={node.y}
+                    r={isPath ? 24 : 22}
+                    fill={
+                      isHover && editMode === 'removeNode'
+                        ? 'rgba(239,68,68,0.5)'
+                        : isBacktrack
+                          ? 'rgba(168,130,255,0.4)'
+                          : NODE_COLORS[state] || NODE_COLORS.unvisited
+                    }
+                    stroke={
+                      isHover && editMode === 'removeNode' ? '#ef4444' :
+                      isBacktrack ? '#a882ff' :
+                      isPath ? '#22c55e' :
+                      isDest ? '#eab308' :
+                      isStart ? '#6366f1' :
+                      state === 'current' ? '#ef4444' :
+                      'transparent'
+                    }
+                    strokeWidth={
+                      isHover && editMode === 'removeNode' ? 3 :
+                      isBacktrack ? 2 :
+                      isPath ? 3 :
+                      isDest ? 3 :
+                      state === 'current' ? 3 :
+                      0
+                    }
+                    style={{
+                      opacity: isBacktrack ? 0.5 : 1,
+                      cursor: editMode === 'move' ? 'grab' :
+                             editMode === 'removeNode' ? 'pointer' :
+                             editMode === 'addEdge' ? 'pointer' :
+                             'default',
+                    }}
+                    onMouseDown={e => { e.stopPropagation(); handleSVGMouseDown(e); }}
+                    onClick={e => { e.stopPropagation(); handleNodeClick(node.id); }}
+                    onMouseEnter={() => setHoveredNode(node.id)}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  />
+
                   <text
-                    x={(from.x + to.x) / 2}
-                    y={(from.y + to.y) / 2 - 1}
-                    fill={isHover ? '#6366f1' : 'var(--text-secondary)'}
-                    fontSize={11}
-                    fontWeight={600}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
+                    x={node.x} y={node.y + 1}
+                    fill="#fff" fontSize={13}
+                    textAnchor="middle" dominantBaseline="middle"
                     style={{ pointerEvents: 'none' }}
                   >
-                    {edge.weight}
+                    {node.label}
                   </text>
+
+                  {isStart && (
+                    <text x={node.x} y={node.y - 28} fill="#6366f1" fontSize={11} textAnchor="middle" fontWeight={700}>
+                      START
+                    </text>
+                  )}
+
+                  {isDest && (
+                    <text x={node.x} y={node.y - 28} fill="#eab308" fontSize={11} textAnchor="middle" fontWeight={700}>
+                      DEST
+                    </text>
+                  )}
+
+                  {showDist && (
+                    <text x={node.x} y={node.y + 36} fill="var(--text-secondary)" fontSize={10} textAnchor="middle" style={{ pointerEvents: 'none' }}>
+                      d={nodeDist}
+                    </text>
+                  )}
                 </g>
-              </g>
-            );
-          })}
-
-          {/* Nodes */}
-          {graph.nodes.map(node => {
-            const state = getNodeState(node.id);
-            const isFront = isFrontier(node.id);
-            const isDest = isDestination(node.id);
-            const isStart = node.id === startNode;
-            const isHover = hoveredNode === node.id;
-            const isEdgeSource = edgeSource === node.id;
-            const nodeDist = step?.distances.get(node.id);
-            const showDist = nodeDist !== undefined && nodeDist < Infinity && state !== 'unvisited';
-            const isBacktrack = state === 'backtrack';
-            const isPath = state === 'path';
-
-            return (
-              <g key={node.id}>
-                {/* Destination ring */}
-                {isDest && (
-                  <circle
-                    cx={node.x} cy={node.y} r={27}
-                    fill="none"
-                    stroke="#eab308"
-                    strokeWidth={2}
-                    strokeDasharray="4,3"
-                  />
-                )}
-
-                {/* Frontier pulse ring */}
-                {isFront && !isBacktrack && (
-                  <circle
-                    cx={node.x} cy={node.y} r={22}
-                    fill="none"
-                    stroke="#f59e0b"
-                    strokeWidth={1.5}
-                    className="frontier-pulse"
-                    style={{ transformOrigin: `${node.x}px ${node.y}px` }}
-                  />
-                )}
-
-                {/* Hover ring */}
-                {isHover && editMode === 'move' && (
-                  <circle
-                    cx={node.x} cy={node.y} r={26}
-                    fill="none"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    strokeDasharray="3,2"
-                  />
-                )}
-
-                {/* Edge source highlight */}
-                {isEdgeSource && (
-                  <circle
-                    cx={node.x} cy={node.y} r={26}
-                    fill="none"
-                    stroke="#f59e0b"
-                    strokeWidth={2.5}
-                  />
-                )}
-
-                {/* Main node circle */}
-                <circle
-                  cx={node.x} cy={node.y}
-                  r={isPath ? 24 : 22}
-                  fill={
-                    isHover && editMode === 'removeNode'
-                      ? 'rgba(239,68,68,0.5)'
-                      : isBacktrack
-                        ? 'rgba(168,130,255,0.4)'
-                        : NODE_COLORS[state] || NODE_COLORS.unvisited
-                  }
-                  stroke={
-                    isHover && editMode === 'removeNode' ? '#ef4444' :
-                    isBacktrack ? '#a882ff' :
-                    isPath ? '#22c55e' :
-                    isDest ? '#eab308' :
-                    isStart ? '#6366f1' :
-                    state === 'current' ? '#ef4444' :
-                    'transparent'
-                  }
-                  strokeWidth={
-                    isHover && editMode === 'removeNode' ? 3 :
-                    isBacktrack ? 2 :
-                    isPath ? 3 :
-                    isDest ? 3 :
-                    state === 'current' ? 3 :
-                    0
-                  }
-                  style={{
-                    opacity: isBacktrack ? 0.5 : 1,
-                    cursor: editMode === 'move' ? 'grab' :
-                           editMode === 'removeNode' ? 'pointer' :
-                           editMode === 'addEdge' ? 'pointer' :
-                           'default',
-                  }}
-                  onMouseDown={e => { e.stopPropagation(); handleSVGMouseDown(e); }}
-                  onClick={e => { e.stopPropagation(); handleNodeClick(node.id); }}
-                  onMouseEnter={() => setHoveredNode(node.id)}
-                  onMouseLeave={() => setHoveredNode(null)}
-                />
-
-                {/* Node label */}
-                <text
-                  x={node.x} y={node.y + 1}
-                  fill="#fff" fontSize={13}
-                  textAnchor="middle" dominantBaseline="middle"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {node.label}
-                </text>
-
-                {/* START label */}
-                {isStart && (
-                  <text x={node.x} y={node.y - 28} fill="#6366f1" fontSize={11} textAnchor="middle" fontWeight={700}>
-                    START
-                  </text>
-                )}
-
-                {/* DEST label */}
-                {isDest && (
-                  <text x={node.x} y={node.y - 28} fill="#eab308" fontSize={11} textAnchor="middle" fontWeight={700}>
-                    DEST
-                  </text>
-                )}
-
-                {/* Distance label */}
-                {showDist && (
-                  <text x={node.x} y={node.y + 36} fill="var(--text-secondary)" fontSize={10} textAnchor="middle" style={{ pointerEvents: 'none' }}>
-                    d={nodeDist}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
+              );
+            })}
+          </g>
         </svg>
 
         {/* Zoom controls */}
@@ -881,51 +925,61 @@ export default function GraphVisualizer({ algorithm }: Props) {
         </div>
       )}
 
-      {/* Data Structure Panels */}
+      {/* Panels below the visualizer - responsive grid */}
       {step && (
-        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.75rem', justifyContent: 'center' }}>
-          <div style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem' }}>
-            <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {dataStructureLabel}
-            </div>
-            <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {algorithm === 'bfs' && (step.queue.length > 0 ? step.queue.map((n, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }}>{n}</span>
-              )) : <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>empty</span>)}
-              {algorithm === 'dfs' && (step.stack.length > 0 ? step.stack.map((n, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }}>{n}</span>
-              )) : <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>empty</span>)}
-              {algorithm === 'dijkstra' && (step.priorityQueue.length > 0 ? step.priorityQueue.map((e, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                  <span>{e.node}</span>
-                  <span style={{ color: 'rgba(245,158,11,0.6)' }}>({e.dist})</span>
-                </span>
-              )) : <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>empty</span>)}
-            </div>
-          </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '0.5rem',
+          marginTop: '0.75rem',
+        }}>
+          {/* Data Structure - algorithm-specific */}
+          {algorithm === 'bfs' && (
+            <QueuePanel queue={step.queue} currentNode={step.currentNode} />
+          )}
+          {algorithm === 'dfs' && (
+            <StackPanel stack={step.stack} currentNode={step.currentNode} />
+          )}
+          {algorithm === 'dijkstra' && (
+            <PriorityQueuePanel priorityQueue={step.priorityQueue} currentNode={step.currentNode} />
+          )}
 
-          <div style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem' }}>
-            <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Visited</div>
-            <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {step.visitedNodes.length > 0 ? step.visitedNodes.map((n, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'monospace' }}>{n}</span>
-              )) : <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>none</span>}
-            </div>
-          </div>
+          {/* Common panels */}
+          <VisitedPanel visitedNodes={step.visitedNodes} currentNode={step.currentNode} />
+          <TraversalPanel traversalOrder={step.traversalOrder} currentNode={step.currentNode} />
 
-          <div style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.8rem' }}>
-            <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Distances</div>
-            <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).map(([n, d]) => (
-                <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', height: '24px', padding: '0 6px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: 'var(--text-secondary)', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                  <span style={{ color: 'var(--text)' }}>{n}:</span><span>{d}</span>
-                </span>
-              ))}
-              {Array.from(step.distances.entries()).filter(([, d]) => d < Infinity).length === 0 && (
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontStyle: 'italic' }}>none</span>
-              )}
-            </div>
-          </div>
+          {/* BFS-specific */}
+          {algorithm === 'bfs' && (
+            <LevelPanel levels={step.levels} visitedNodes={step.visitedNodes} />
+          )}
+
+          {/* Dijkstra-specific */}
+          {algorithm === 'dijkstra' && (
+            <DistanceTable distances={step.distances} visitedNodes={step.visitedNodes} />
+          )}
+          {algorithm === 'dijkstra' && (
+            <ParentTable parent={step.parent} visitedNodes={step.visitedNodes} />
+          )}
+          {algorithm === 'dijkstra' && (
+            <RelaxationPanel relaxation={step.relaxation ?? null} />
+          )}
+          {algorithm === 'dijkstra' && (
+            <ShortestPathPanel
+              pathEdges={step.pathEdges}
+              distances={step.distances}
+              destination={destNode}
+            />
+          )}
+
+          {/* Pseudocode - always visible */}
+          <PseudocodePanel
+            lines={pseudocode}
+            currentLine={step.pseudocodeLine}
+            phase={step.phase}
+          />
+
+          {/* Event Log - always visible */}
+          <EventLogPanel logEntries={step.logEntries} currentStep={currentStep} />
         </div>
       )}
 
