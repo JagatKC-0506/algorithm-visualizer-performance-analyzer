@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import type { MergeSortFrameNode } from '../../utils/mergeSortDiagram';
 import type { SortingVisualizerStep } from '../../types';
 import { generateMergeSortDiagram } from '../../utils/mergeSortDiagram';
@@ -55,6 +55,7 @@ export default function MergeSortDiagram({ array, currentStep, step }: Props) {
   }, [frame]);
 
   const prevVisibleRef = useRef(new Set<string>());
+  const collapsingRef = useRef(new Set<string>());
   const prevValuesRef = useRef(new Map<string, string>());
 
   const visibleNow = useMemo(() => {
@@ -75,24 +76,47 @@ export default function MergeSortDiagram({ array, currentStep, step }: Props) {
     return nv;
   }, [visibleNow]);
 
+  const newlyHidden = useMemo(() => {
+    const nh = new Set<string>();
+    for (const id of prevVisibleRef.current) {
+      if (frame && !visibleNow.has(id)) {
+        nh.add(id);
+      }
+    }
+    return nh;
+  }, [frame, visibleNow]);
+
+  for (const id of newlyHidden) {
+    collapsingRef.current.add(id);
+  }
+
+  useEffect(() => {
+    collapsingRef.current.clear();
+  });
+
   function renderNode(nodeId: string, depth: number): React.ReactNode {
     const node = allNodes.find(n => n.id === nodeId);
     const fn = frameMap.get(nodeId);
-    if (!node || !fn || fn.state === 'hidden') return null;
 
-    const style = STATE_STYLES[fn.state];
+    const isHidden = !fn || fn.state === 'hidden';
+    const isCollapsing = collapsingRef.current.has(nodeId);
+    if (isHidden && !isCollapsing) return null;
+
+    const style = STATE_STYLES[fn!.state];
     const isNew = newlyVisible.has(nodeId);
-    const isActive = fn.state === 'dividing' || fn.state === 'merging';
-    const isMerging = fn.state === 'merging';
+    const isActive = fn!.state === 'dividing' || fn!.state === 'merging';
+    const isMerging = fn!.state === 'merging';
 
-    const valKey = fn.values.join(',');
+    const valKey = fn!.values.join(',');
     const prevVal = prevValuesRef.current.get(nodeId);
     const valChanged = prevVal !== undefined && prevVal !== valKey;
     prevValuesRef.current.set(nodeId, valKey);
 
-    const children = node.children?.filter(c => {
+    const children = node!.children?.filter(c => {
       const cf = frameMap.get(c);
-      return cf && cf.state !== 'hidden';
+      const isCHidden = !cf || cf.state === 'hidden';
+      const isCCollapsing = collapsingRef.current.has(c);
+      return !isCHidden || isCCollapsing;
     });
 
     const staggerDelay = `${depth * 60}ms`;
@@ -110,19 +134,21 @@ export default function MergeSortDiagram({ array, currentStep, step }: Props) {
         <div
           style={{
             '--border-color': style.border,
-            background: style.bg,
-            border: `2px solid ${style.border}`,
+            background: isCollapsing ? 'transparent' : style.bg,
+            border: `2px solid ${isCollapsing ? 'transparent' : style.border}`,
             borderRadius: '8px',
             padding: '6px 8px',
             transition: 'background 0.25s, border 0.25s, box-shadow 0.25s',
             boxShadow: isActive
               ? `0 0 0 3px ${style.border}44, 0 0 16px ${style.border}22`
               : '0 1px 3px rgba(0,0,0,0.1)',
-            animation: isNew
-              ? `nodeEnter 0.35s ease-out both`
-              : isActive
-                ? `nodePulse 1.8s ease-in-out infinite`
-                : 'none',
+            animation: isCollapsing
+              ? 'collapseNode 0.35s ease-out forwards'
+              : isNew
+                ? `nodeEnter 0.35s ease-out both`
+                : isActive
+                  ? `nodePulse 1.8s ease-in-out infinite`
+                  : 'none',
             animationDelay: isNew ? staggerDelay : '0s',
           } as React.CSSProperties}
         >
@@ -140,9 +166,9 @@ export default function MergeSortDiagram({ array, currentStep, step }: Props) {
                 animation: valChanged ? 'valueSwapIn 0.3s ease-out' : 'none',
               }}
             >
-              {fn.values.map((val, i) => {
-                const globalIdx = node.start + i;
-                const miniColor = getMiniColor(globalIdx, step, fn.state);
+              {fn!.values.map((val, i) => {
+                const globalIdx = node!.start + i;
+                const miniColor = getMiniColor(globalIdx, step, fn!.state);
                 const isActiveItem = step && (
                   step.comparing.includes(globalIdx) ||
                   step.swapping.includes(globalIdx) ||

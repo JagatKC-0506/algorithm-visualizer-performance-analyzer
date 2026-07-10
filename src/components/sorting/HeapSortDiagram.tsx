@@ -1,13 +1,17 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import type { SortingVisualizerStep } from '../../types';
 
 interface Props {
   array: number[];
   step: SortingVisualizerStep | null;
+  started: boolean;
+  steps: SortingVisualizerStep[];
+  currentStep: number;
 }
 
-function getNodeColor(idx: number, step: SortingVisualizerStep | null): string {
+function getNodeColor(idx: number, step: SortingVisualizerStep | null, justRemoved: Set<number>): string {
   if (!step) return 'var(--accent)';
+  if (justRemoved.has(idx)) return '#ef4444';
   if (step.sorted.includes(idx)) return '#22c55e';
   if (step.swapping.includes(idx)) return '#ef4444';
   if (step.comparing.includes(idx)) return '#f59e0b';
@@ -16,9 +20,26 @@ function getNodeColor(idx: number, step: SortingVisualizerStep | null): string {
   return 'var(--accent)';
 }
 
-export default function HeapSortDiagram({ array, step }: Props) {
+export default function HeapSortDiagram({ array, step, started, steps, currentStep }: Props) {
   const prevValuesRef = useRef(new Map<number, number>());
+  const prevSortedRef = useRef<number[]>([]);
   const initializedRef = useRef(false);
+
+  const justRemoved = useMemo(() => {
+    const removed = new Set<number>();
+    if (currentStep === 0 || !step) return removed;
+
+    const prevStep = steps[currentStep - 1];
+    if (!prevStep) return removed;
+
+    const prevSorted = new Set(prevStep.sorted);
+    for (const idx of step.sorted) {
+      if (!prevSorted.has(idx) && step.subarray && idx >= step.subarray.end) {
+        removed.add(idx);
+      }
+    }
+    return removed;
+  }, [currentStep, step, steps]);
 
   const hasSorted = (step?.sorted.length ?? 0) > 0;
   const subEnd = step?.subarray?.end;
@@ -31,7 +52,7 @@ export default function HeapSortDiagram({ array, step }: Props) {
     const left = 2 * index + 1;
     const right = 2 * index + 2;
     const hasChildren = left < array.length;
-    const color = getNodeColor(index, step);
+    const color = getNodeColor(index, step, justRemoved);
     const isActive = step && (
       step.comparing.includes(index) ||
       step.swapping.includes(index) ||
@@ -40,8 +61,9 @@ export default function HeapSortDiagram({ array, step }: Props) {
     const isSorted = step?.sorted.includes(index) ?? false;
     const isOutsideHeap = step?.subarray && (index < step.subarray.start || index >= step.subarray.end);
     const isHeapBoundary = isBuildingPhase && index === step?.subarray?.start;
+    const isJustRemoved = justRemoved.has(index);
 
-    const staggerDelay = `${depth * 60}ms`;
+    const staggerDelay = started ? `${depth * 60}ms` : '0s';
     const prevVal = prevValuesRef.current.get(index);
     const valChanged = initializedRef.current && prevVal !== undefined && prevVal !== array[index];
     prevValuesRef.current.set(index, array[index]);
@@ -82,15 +104,17 @@ export default function HeapSortDiagram({ array, step }: Props) {
             '--border-color': color,
             background: `${color}18`,
             border: `2px solid ${
-              isActive
-                ? color
-                : isSorted
-                  ? '#22c55e'
-                  : isOutsideHeap
-                    ? 'var(--border)'
-                    : isHeapBoundary
-                      ? '#22c55e'
-                      : color
+              isJustRemoved
+                ? '#ef4444'
+                : isActive
+                  ? color
+                  : isSorted
+                    ? '#22c55e'
+                    : isOutsideHeap
+                      ? 'var(--border)'
+                      : isHeapBoundary
+                        ? '#22c55e'
+                        : color
             }`,
             borderRadius: '50%',
             width: '36px',
@@ -112,16 +136,20 @@ export default function HeapSortDiagram({ array, step }: Props) {
                 : '0 1px 3px rgba(0,0,0,0.1)',
             animation: isActive
               ? `nodePulse 1.8s ease-in-out infinite`
-              : `nodeEnter 0.35s ease-out both`,
-            animationDelay: isActive ? '0s' : staggerDelay,
+              : isJustRemoved
+                ? 'slideOutFade 0.4s ease-out forwards'
+                : started
+                  ? `nodeEnter 0.35s ease-out both`
+                  : 'none',
+            animationDelay: isActive ? '0s' : isJustRemoved ? '0s' : staggerDelay,
             position: 'relative',
             zIndex: isActive ? 2 : 1,
           } as React.CSSProperties}
         >
           <span
-            key={valChanged ? `v-${index}-${array[index]}` : undefined}
+            key={isJustRemoved ? `removed-${index}` : (valChanged ? `v-${index}-${array[index]}` : undefined)}
             style={{
-              animation: valChanged ? 'valueSwapIn 0.3s ease-out' : 'none',
+              animation: valChanged && !isJustRemoved ? 'valueSwapIn 0.3s ease-out' : 'none',
             }}
           >
             {array[index]}
@@ -143,7 +171,7 @@ export default function HeapSortDiagram({ array, step }: Props) {
                 height: '12px',
                 background: 'var(--border)',
                 transformOrigin: 'top',
-                animation: 'lineGrowVertical 0.3s ease-out',
+                animation: started ? 'lineGrowVertical 0.3s ease-out' : 'none',
                 animationDelay: staggerDelay,
               }}
             />
@@ -157,7 +185,7 @@ export default function HeapSortDiagram({ array, step }: Props) {
                   height: '2px',
                   background: 'var(--border)',
                   transformOrigin: 'center',
-                  animation: 'lineGrowHorizontal 0.3s ease-out',
+                  animation: started ? 'lineGrowHorizontal 0.3s ease-out' : 'none',
                   animationDelay: staggerDelay,
                 }}
               />
@@ -174,7 +202,7 @@ export default function HeapSortDiagram({ array, step }: Props) {
                     height: '12px',
                     background: 'var(--border)',
                     transformOrigin: 'top',
-                    animation: 'lineGrowVertical 0.3s ease-out',
+                    animation: started ? 'lineGrowVertical 0.3s ease-out' : 'none',
                     animationDelay: staggerDelay,
                   }}
                 />
@@ -194,7 +222,7 @@ export default function HeapSortDiagram({ array, step }: Props) {
                       height: '12px',
                       background: 'var(--border)',
                       transformOrigin: 'top',
-                      animation: 'lineGrowVertical 0.3s ease-out',
+                      animation: started ? 'lineGrowVertical 0.3s ease-out' : 'none',
                       animationDelay: staggerDelay,
                     }}
                   />
@@ -218,6 +246,29 @@ export default function HeapSortDiagram({ array, step }: Props) {
     );
   }
 
+  if (!started) {
+    return (
+      <div
+        style={{
+          padding: '2rem',
+          textAlign: 'center',
+          color: 'var(--text-secondary)',
+          fontSize: '1rem',
+          fontWeight: 500,
+          background: 'var(--bg)',
+          borderRadius: '0.5rem',
+          border: '1px solid var(--border)',
+          minHeight: '200px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        Press Play to start heap sort
+      </div>
+    );
+  }
+
   return (
     <div>
       <div
@@ -229,9 +280,9 @@ export default function HeapSortDiagram({ array, step }: Props) {
           color: isBuildingPhase ? '#3b82f6' : isExtractPhase ? '#f59e0b' : 'var(--text-secondary)',
         }}
       >
-        {isBuildingPhase && '🔨 Building Max-Heap'}
-        {isExtractPhase && '📤 Extracting Max Elements'}
-        {!isBuildingPhase && !isExtractPhase && '🌳 Heap Tree'}
+        {isBuildingPhase && 'Building Max-Heap'}
+        {isExtractPhase && 'Extracting Max Elements'}
+        {!isBuildingPhase && !isExtractPhase && 'Heap Tree'}
       </div>
       <div
         style={{

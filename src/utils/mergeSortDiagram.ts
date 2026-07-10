@@ -93,22 +93,48 @@ export function generateMergeSortDiagram(arr: number[]): MergeSortDiagramData {
     nodeStates.set(n.id, 'hidden');
   }
 
-  function revealPreOrder(builder: TreeBuilder) {
-    nodeStates.set(builder.node.id, 'dividing');
+  function revealLevelOrder(root: TreeBuilder) {
+    const byDepth: TreeBuilder[][] = [];
+    const queue: { builder: TreeBuilder; depth: number }[] = [{ builder: root, depth: 0 }];
 
-    const desc = builder.node.children
-      ? `Divide [${builder.node.values}] → [` +
-        `${builder.left!.node.values}] and [${builder.right!.node.values}]`
-      : `Single element [${builder.node.values}] \u2014 base case`;
+    while (queue.length > 0) {
+      const { builder: current, depth } = queue.shift()!;
+      if (!byDepth[depth]) byDepth[depth] = [];
+      byDepth[depth].push(current);
+      if (current.left) queue.push({ builder: current.left, depth: depth + 1 });
+      if (current.right) queue.push({ builder: current.right, depth: depth + 1 });
+    }
 
-    frames.push(makeFrame(allNodes, nodeValues, nodeStates, desc));
-    nodeStates.set(builder.node.id, 'done');
+    for (let d = 0; d < byDepth.length; d++) {
+      const nodesAtDepth = byDepth[d];
 
-    if (builder.left) revealPreOrder(builder.left);
-    if (builder.right) revealPreOrder(builder.right);
+      for (const current of nodesAtDepth) {
+        nodeStates.set(current.node.id, 'dividing');
+      }
+
+      const parts: string[] = [];
+      for (const current of nodesAtDepth) {
+        if (current.node.children) {
+          parts.push(`[${current.node.values}] \u2192 [` +
+            `${current.left!.node.values}] [${current.right!.node.values}]`);
+        } else {
+          parts.push(`[${current.node.values}] base case`);
+        }
+      }
+
+      const desc = d === 0
+        ? `Divide [${nodesAtDepth[0].node.values}]`
+        : `Level ${d}: ${parts.join(' | ')}`;
+
+      frames.push(makeFrame(allNodes, nodeValues, nodeStates, desc));
+
+      for (const current of nodesAtDepth) {
+        nodeStates.set(current.node.id, 'done');
+      }
+    }
   }
 
-  revealPreOrder(tree);
+  revealLevelOrder(tree);
 
   function mergePostOrder(builder: TreeBuilder) {
     if (!builder.left || !builder.right) return;
@@ -121,6 +147,8 @@ export function generateMergeSortDiagram(arr: number[]): MergeSortDiagramData {
     const merged = mergeSorted(leftVals, rightVals);
 
     nodeValues.set(builder.node.id, merged);
+    nodeStates.set(builder.left.node.id, 'hidden');
+    nodeStates.set(builder.right.node.id, 'hidden');
     nodeStates.set(builder.node.id, 'merging');
 
     frames.push(makeFrame(

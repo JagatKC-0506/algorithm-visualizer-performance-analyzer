@@ -38875,20 +38875,44 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        nodeValues.set(n.id, [...n.values]);
 	        nodeStates.set(n.id, 'hidden');
 	    }
-	    function revealPreOrder(builder) {
-	        nodeStates.set(builder.node.id, 'dividing');
-	        const desc = builder.node.children
-	            ? `Divide [${builder.node.values}] → [` +
-	                `${builder.left.node.values}] and [${builder.right.node.values}]`
-	            : `Single element [${builder.node.values}] \u2014 base case`;
-	        frames.push(makeFrame(allNodes, nodeValues, nodeStates, desc));
-	        nodeStates.set(builder.node.id, 'done');
-	        if (builder.left)
-	            revealPreOrder(builder.left);
-	        if (builder.right)
-	            revealPreOrder(builder.right);
+	    function revealLevelOrder(root) {
+	        const byDepth = [];
+	        const queue = [{ builder: root, depth: 0 }];
+	        while (queue.length > 0) {
+	            const { builder: current, depth } = queue.shift();
+	            if (!byDepth[depth])
+	                byDepth[depth] = [];
+	            byDepth[depth].push(current);
+	            if (current.left)
+	                queue.push({ builder: current.left, depth: depth + 1 });
+	            if (current.right)
+	                queue.push({ builder: current.right, depth: depth + 1 });
+	        }
+	        for (let d = 0; d < byDepth.length; d++) {
+	            const nodesAtDepth = byDepth[d];
+	            for (const current of nodesAtDepth) {
+	                nodeStates.set(current.node.id, 'dividing');
+	            }
+	            const parts = [];
+	            for (const current of nodesAtDepth) {
+	                if (current.node.children) {
+	                    parts.push(`[${current.node.values}] \u2192 [` +
+	                        `${current.left.node.values}] [${current.right.node.values}]`);
+	                }
+	                else {
+	                    parts.push(`[${current.node.values}] base case`);
+	                }
+	            }
+	            const desc = d === 0
+	                ? `Divide [${nodesAtDepth[0].node.values}]`
+	                : `Level ${d}: ${parts.join(' | ')}`;
+	            frames.push(makeFrame(allNodes, nodeValues, nodeStates, desc));
+	            for (const current of nodesAtDepth) {
+	                nodeStates.set(current.node.id, 'done');
+	            }
+	        }
 	    }
-	    revealPreOrder(tree);
+	    revealLevelOrder(tree);
 	    function mergePostOrder(builder) {
 	        if (!builder.left || !builder.right)
 	            return;
@@ -38898,6 +38922,8 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        const rightVals = nodeValues.get(builder.right.node.id);
 	        const merged = mergeSorted(leftVals, rightVals);
 	        nodeValues.set(builder.node.id, merged);
+	        nodeStates.set(builder.left.node.id, 'hidden');
+	        nodeStates.set(builder.right.node.id, 'hidden');
 	        nodeStates.set(builder.node.id, 'merging');
 	        frames.push(makeFrame(allNodes, nodeValues, nodeStates, `Merge [${leftVals}] + [${rightVals}] \u2192 [${merged}]`));
 	        nodeStates.set(builder.node.id, 'done');
@@ -38950,6 +38976,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        return m;
 	    }, [frame]);
 	    const prevVisibleRef = reactExports.useRef(new Set());
+	    const collapsingRef = reactExports.useRef(new Set());
 	    const prevValuesRef = reactExports.useRef(new Map());
 	    const visibleNow = reactExports.useMemo(() => {
 	        const s = new Set();
@@ -38969,10 +38996,27 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        }
 	        return nv;
 	    }, [visibleNow]);
+	    const newlyHidden = reactExports.useMemo(() => {
+	        const nh = new Set();
+	        for (const id of prevVisibleRef.current) {
+	            if (frame && !visibleNow.has(id)) {
+	                nh.add(id);
+	            }
+	        }
+	        return nh;
+	    }, [frame, visibleNow]);
+	    for (const id of newlyHidden) {
+	        collapsingRef.current.add(id);
+	    }
+	    reactExports.useEffect(() => {
+	        collapsingRef.current.clear();
+	    });
 	    function renderNode(nodeId, depth) {
 	        const node = allNodes.find(n => n.id === nodeId);
 	        const fn = frameMap.get(nodeId);
-	        if (!node || !fn || fn.state === 'hidden')
+	        const isHidden = !fn || fn.state === 'hidden';
+	        const isCollapsing = collapsingRef.current.has(nodeId);
+	        if (isHidden && !isCollapsing)
 	            return null;
 	        const style = STATE_STYLES[fn.state];
 	        const isNew = newlyVisible.has(nodeId);
@@ -38984,7 +39028,9 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        prevValuesRef.current.set(nodeId, valKey);
 	        const children = node.children?.filter(c => {
 	            const cf = frameMap.get(c);
-	            return cf && cf.state !== 'hidden';
+	            const isCHidden = !cf || cf.state === 'hidden';
+	            const isCCollapsing = collapsingRef.current.has(c);
+	            return !isCHidden || isCCollapsing;
 	        });
 	        const staggerDelay = `${depth * 60}ms`;
 	        return (jsxRuntimeExports.jsxs("div", { style: {
@@ -38994,19 +39040,21 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                flexShrink: 0,
 	            }, children: [jsxRuntimeExports.jsx("div", { style: {
 	                        '--border-color': style.border,
-	                        background: style.bg,
-	                        border: `2px solid ${style.border}`,
+	                        background: isCollapsing ? 'transparent' : style.bg,
+	                        border: `2px solid ${isCollapsing ? 'transparent' : style.border}`,
 	                        borderRadius: '8px',
 	                        padding: '6px 8px',
 	                        transition: 'background 0.25s, border 0.25s, box-shadow 0.25s',
 	                        boxShadow: isActive
 	                            ? `0 0 0 3px ${style.border}44, 0 0 16px ${style.border}22`
 	                            : '0 1px 3px rgba(0,0,0,0.1)',
-	                        animation: isNew
-	                            ? `nodeEnter 0.35s ease-out both`
-	                            : isActive
-	                                ? `nodePulse 1.8s ease-in-out infinite`
-	                                : 'none',
+	                        animation: isCollapsing
+	                            ? 'collapseNode 0.35s ease-out forwards'
+	                            : isNew
+	                                ? `nodeEnter 0.35s ease-out both`
+	                                : isActive
+	                                    ? `nodePulse 1.8s ease-in-out infinite`
+	                                    : 'none',
 	                        animationDelay: isNew ? staggerDelay : '0s',
 	                    }, children: jsxRuntimeExports.jsx("div", { style: {
 	                            position: 'relative',
@@ -39109,9 +39157,11 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                }, children: frame.description }))] }));
 	}
 
-	function getNodeColor(idx, step) {
+	function getNodeColor(idx, step, justRemoved) {
 	    if (!step)
 	        return 'var(--accent)';
+	    if (justRemoved.has(idx))
+	        return '#ef4444';
 	    if (step.sorted.includes(idx))
 	        return '#22c55e';
 	    if (step.swapping.includes(idx))
@@ -39124,9 +39174,25 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        return 'var(--border)';
 	    return 'var(--accent)';
 	}
-	function HeapSortDiagram({ array, step }) {
+	function HeapSortDiagram({ array, step, started, steps, currentStep }) {
 	    const prevValuesRef = reactExports.useRef(new Map());
+	    reactExports.useRef([]);
 	    const initializedRef = reactExports.useRef(false);
+	    const justRemoved = reactExports.useMemo(() => {
+	        const removed = new Set();
+	        if (currentStep === 0 || !step)
+	            return removed;
+	        const prevStep = steps[currentStep - 1];
+	        if (!prevStep)
+	            return removed;
+	        const prevSorted = new Set(prevStep.sorted);
+	        for (const idx of step.sorted) {
+	            if (!prevSorted.has(idx) && step.subarray && idx >= step.subarray.end) {
+	                removed.add(idx);
+	            }
+	        }
+	        return removed;
+	    }, [currentStep, step, steps]);
 	    const hasSorted = (step?.sorted.length ?? 0) > 0;
 	    const subEnd = step?.subarray?.end;
 	    const isBuildingPhase = hasSorted && subEnd === array.length;
@@ -39137,14 +39203,15 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        const left = 2 * index + 1;
 	        const right = 2 * index + 2;
 	        const hasChildren = left < array.length;
-	        const color = getNodeColor(index, step);
+	        const color = getNodeColor(index, step, justRemoved);
 	        const isActive = step && (step.comparing.includes(index) ||
 	            step.swapping.includes(index) ||
 	            step.current === index);
 	        const isSorted = step?.sorted.includes(index) ?? false;
 	        const isOutsideHeap = step?.subarray && (index < step.subarray.start || index >= step.subarray.end);
 	        const isHeapBoundary = isBuildingPhase && index === step?.subarray?.start;
-	        const staggerDelay = `${depth * 60}ms`;
+	        const isJustRemoved = justRemoved.has(index);
+	        const staggerDelay = started ? `${depth * 60}ms` : '0s';
 	        const prevVal = prevValuesRef.current.get(index);
 	        const valChanged = initializedRef.current && prevVal !== undefined && prevVal !== array[index];
 	        prevValuesRef.current.set(index, array[index]);
@@ -39170,15 +39237,17 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                    }, children: "\u2713 Heap" })), jsxRuntimeExports.jsx("div", { style: {
 	                        '--border-color': color,
 	                        background: `${color}18`,
-	                        border: `2px solid ${isActive
-                            ? color
-                            : isSorted
-                                ? '#22c55e'
-                                : isOutsideHeap
-                                    ? 'var(--border)'
-                                    : isHeapBoundary
-                                        ? '#22c55e'
-                                        : color}`,
+	                        border: `2px solid ${isJustRemoved
+                            ? '#ef4444'
+                            : isActive
+                                ? color
+                                : isSorted
+                                    ? '#22c55e'
+                                    : isOutsideHeap
+                                        ? 'var(--border)'
+                                        : isHeapBoundary
+                                            ? '#22c55e'
+                                            : color}`,
 	                        borderRadius: '50%',
 	                        width: '36px',
 	                        height: '36px',
@@ -39199,13 +39268,17 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                                : '0 1px 3px rgba(0,0,0,0.1)',
 	                        animation: isActive
 	                            ? `nodePulse 1.8s ease-in-out infinite`
-	                            : `nodeEnter 0.35s ease-out both`,
-	                        animationDelay: isActive ? '0s' : staggerDelay,
+	                            : isJustRemoved
+	                                ? 'slideOutFade 0.4s ease-out forwards'
+	                                : started
+	                                    ? `nodeEnter 0.35s ease-out both`
+	                                    : 'none',
+	                        animationDelay: isActive ? '0s' : isJustRemoved ? '0s' : staggerDelay,
 	                        position: 'relative',
 	                        zIndex: isActive ? 2 : 1,
 	                    }, children: jsxRuntimeExports.jsx("span", { style: {
-	                            animation: valChanged ? 'valueSwapIn 0.3s ease-out' : 'none',
-	                        }, children: array[index] }, valChanged ? `v-${index}-${array[index]}` : undefined) }), hasChildren && (jsxRuntimeExports.jsxs("div", { style: {
+	                            animation: valChanged && !isJustRemoved ? 'valueSwapIn 0.3s ease-out' : 'none',
+	                        }, children: array[index] }, isJustRemoved ? `removed-${index}` : (valChanged ? `v-${index}-${array[index]}` : undefined)) }), hasChildren && (jsxRuntimeExports.jsxs("div", { style: {
 	                        display: 'flex',
 	                        flexDirection: 'column',
 	                        alignItems: 'center',
@@ -39215,7 +39288,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                                height: '12px',
 	                                background: 'var(--border)',
 	                                transformOrigin: 'top',
-	                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                animation: started ? 'lineGrowVertical 0.3s ease-out' : 'none',
 	                                animationDelay: staggerDelay,
 	                            } }), jsxRuntimeExports.jsxs("div", { style: { display: 'flex', gap: `${Math.max(12, 36 - depth * 4)}px`, position: 'relative' }, children: [jsxRuntimeExports.jsx("div", { style: {
 	                                        position: 'absolute',
@@ -39225,7 +39298,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                                        height: '2px',
 	                                        background: 'var(--border)',
 	                                        transformOrigin: 'center',
-	                                        animation: 'lineGrowHorizontal 0.3s ease-out',
+	                                        animation: started ? 'lineGrowHorizontal 0.3s ease-out' : 'none',
 	                                        animationDelay: staggerDelay,
 	                                    } }), jsxRuntimeExports.jsxs("div", { style: {
 	                                        display: 'flex',
@@ -39236,7 +39309,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                                                height: '12px',
 	                                                background: 'var(--border)',
 	                                                transformOrigin: 'top',
-	                                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                                animation: started ? 'lineGrowVertical 0.3s ease-out' : 'none',
 	                                                animationDelay: staggerDelay,
 	                                            } }), renderHeap(left, depth + 1)] }), right < array.length && (jsxRuntimeExports.jsxs("div", { style: {
 	                                        display: 'flex',
@@ -39247,7 +39320,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                                                height: '12px',
 	                                                background: 'var(--border)',
 	                                                transformOrigin: 'top',
-	                                                animation: 'lineGrowVertical 0.3s ease-out',
+	                                                animation: started ? 'lineGrowVertical 0.3s ease-out' : 'none',
 	                                                animationDelay: staggerDelay,
 	                                            } }), renderHeap(right, depth + 1)] }))] })] }))] }, index));
 	    }
@@ -39255,13 +39328,29 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	    if (array.length === 0) {
 	        return (jsxRuntimeExports.jsx("div", { style: { padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }, children: "No data to display" }));
 	    }
+	    if (!started) {
+	        return (jsxRuntimeExports.jsx("div", { style: {
+	                padding: '2rem',
+	                textAlign: 'center',
+	                color: 'var(--text-secondary)',
+	                fontSize: '1rem',
+	                fontWeight: 500,
+	                background: 'var(--bg)',
+	                borderRadius: '0.5rem',
+	                border: '1px solid var(--border)',
+	                minHeight: '200px',
+	                display: 'flex',
+	                alignItems: 'center',
+	                justifyContent: 'center',
+	            }, children: "Press Play to start heap sort" }));
+	    }
 	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsxs("div", { style: {
 	                    fontSize: '0.85rem',
 	                    fontWeight: 600,
 	                    marginBottom: '0.5rem',
 	                    textAlign: 'center',
 	                    color: isBuildingPhase ? '#3b82f6' : isExtractPhase ? '#f59e0b' : 'var(--text-secondary)',
-	                }, children: [isBuildingPhase && '🔨 Building Max-Heap', isExtractPhase && '📤 Extracting Max Elements', !isBuildingPhase && !isExtractPhase && '🌳 Heap Tree'] }), jsxRuntimeExports.jsx("div", { style: {
+	                }, children: [isBuildingPhase && 'Building Max-Heap', isExtractPhase && 'Extracting Max Elements', !isBuildingPhase && !isExtractPhase && 'Heap Tree'] }), jsxRuntimeExports.jsx("div", { style: {
 	                    width: '100%',
 	                    overflowX: 'auto',
 	                    overflowY: 'auto',
@@ -40021,6 +40110,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	        }
 	        return null;
 	    }, [diagramData, diagramFrame, isMerge]);
+	    const started = playing || currentStep > 0;
 	    return (jsxRuntimeExports.jsxs("div", { children: [jsxRuntimeExports.jsx("style", { children: `
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.9); }
@@ -40089,7 +40179,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 	                                background: (idx >= activeSubarray.start && idx < activeSubarray.end)
 	                                    ? '#3b82f6' : 'var(--border)',
 	                                transition: 'background 0.2s',
-	                            } }, idx))) }))] })), algorithm === 'heap' && (jsxRuntimeExports.jsx("div", { style: { marginBottom: '1rem' }, children: jsxRuntimeExports.jsx(HeapSortDiagram, { array: array, step: step }) })), algorithm === 'quick' && (jsxRuntimeExports.jsx(QuickSortDiagram, { array: array, step: step, steps: steps, currentStep: currentStep })), algorithm === 'insertion' && (jsxRuntimeExports.jsx(InsertionSortDiagram, { array: array, step: step })), jsxRuntimeExports.jsx("div", { style: {
+	                            } }, idx))) }))] })), algorithm === 'heap' && (jsxRuntimeExports.jsx("div", { style: { marginBottom: '1rem' }, children: jsxRuntimeExports.jsx(HeapSortDiagram, { array: array, step: step, started: started, steps: steps, currentStep: currentStep }) })), algorithm === 'quick' && (jsxRuntimeExports.jsx(QuickSortDiagram, { array: array, step: step, steps: steps, currentStep: currentStep })), algorithm === 'insertion' && (jsxRuntimeExports.jsx(InsertionSortDiagram, { array: array, step: step })), jsxRuntimeExports.jsx("div", { style: {
 	                    width: '100%',
 	                    overflowX: 'auto',
 	                    padding: '1rem 0.5rem',

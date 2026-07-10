@@ -259,6 +259,8 @@ export default function SortingVisualizer({ algorithm }: Props) {
     return null;
   }, [diagramData, diagramFrame, isMerge]);
 
+  const started = playing || currentStep > 0;
+
   return (
     <div>
       <style>{`
@@ -446,6 +448,9 @@ export default function SortingVisualizer({ algorithm }: Props) {
           <HeapSortDiagram
             array={array}
             step={step}
+            started={started}
+            steps={steps}
+            currentStep={currentStep}
           />
         </div>
       )}
