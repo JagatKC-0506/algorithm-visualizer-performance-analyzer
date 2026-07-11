@@ -5,7 +5,7 @@ import { generateRandomArray, generateNearlySortedArray, generateReverseSortedAr
 import { analyzeSortingAlgorithm } from '../../utils/sorting';
 import Button from '../common/Button';
 
-const SORTING_ALGORITHM_LIST: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'merge', 'quick', 'heap'];
+const SORTING_ALGORITHM_LIST: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'quick', 'heap'];
 
 export default function PerformanceAnalyzer({ algorithm }: { algorithm: AlgorithmType }) {
   const [size, setSize] = useState(50);

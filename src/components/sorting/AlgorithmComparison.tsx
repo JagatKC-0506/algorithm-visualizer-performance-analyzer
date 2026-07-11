@@ -6,10 +6,10 @@ import { generateRandomArray } from '../../utils/helpers';
 import { analyzeSortingAlgorithm } from '../../utils/sorting';
 import Button from '../common/Button';
 
-const ALL_ALGORITHMS: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'merge', 'quick', 'heap'];
+const ALL_ALGORITHMS: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'quick', 'heap'];
 
 export default function AlgorithmComparison() {
-  const [selected, setSelected] = useState<AlgorithmType[]>(['bubble', 'merge', 'quick']);
+  const [selected, setSelected] = useState<AlgorithmType[]>(['bubble', 'insertion', 'quick']);
   const [size, setSize] = useState(100);
   const [arrayType, setArrayType] = useState<ArrayType>('random');
   const [results, setResults] = useState<{ algorithm: AlgorithmType; metrics: SortMetrics }[]>([]);

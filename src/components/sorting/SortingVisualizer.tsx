@@ -3,8 +3,6 @@ import type { AlgorithmType, SortingVisualizerStep, ElementState } from '../../t
 import { sortingAlgorithms } from '../../algorithms/sorting';
 import { SORTING_ALGORITHMS } from '../../types/algorithms';
 import { generateRandomArray, generateSortedArray, generateNearlySortedArray, generateReverseSortedArray } from '../../utils/helpers';
-import { generateMergeSortDiagram } from '../../utils/mergeSortDiagram';
-import MergeSortDiagram from './MergeSortDiagram';
 import HeapSortDiagram from './HeapSortDiagram';
 import QuickSortDiagram from './QuickSortDiagram';
 import InsertionSortDiagram from './InsertionSortDiagram';
@@ -66,12 +64,6 @@ function getActiveInstructionStep(algo: AlgorithmType, description: string): num
       if (d.includes('shift')) return 2;
       if (d.includes('compar')) return 1;
       if (d.includes('repeat') || d.includes('move') || d.includes('next') || d.includes('sorted')) return 4;
-      return 0;
-    case 'merge':
-      if (d.includes('merg') || d.includes('compar')) return 2;
-      if (d.includes('divid') || d.includes('split') || d.includes('half')) return 0;
-      if (d.includes('sort') || d.includes('recurs')) return 1;
-      if (d.includes('contin') || d.includes('result') || d.includes('sorted')) return 3;
       return 0;
     case 'quick':
       if (d.includes('pivot')) {
@@ -233,31 +225,10 @@ export default function SortingVisualizer({ algorithm }: Props) {
     setSteps(newSteps);
   };
 
+  const maxStep = steps.length - 1;
   const step = currentStep < steps.length ? steps[currentStep] : null;
   const instructionSteps = SORTING_ALGORITHMS[algorithm]?.steps || [];
   const activeInstructionStep = step ? getActiveInstructionStep(algorithm, step.description) : -1;
-
-  const diagramData = useMemo(() => {
-    if (algorithm === 'merge') return generateMergeSortDiagram([...array]);
-    return null;
-  }, [algorithm, array]);
-
-  const isMerge = algorithm === 'merge';
-  const maxStep = isMerge && diagramData ? diagramData.frames.length - 1 : steps.length - 1;
-  const diagramFrame = isMerge && diagramData
-    ? diagramData.frames[Math.min(currentStep, diagramData.frames.length - 1)]
-    : null;
-
-  const activeSubarray = useMemo(() => {
-    if (!isMerge || !diagramData || !diagramFrame) return null;
-    for (const fn of diagramFrame.nodes) {
-      if (fn.state === 'dividing' || fn.state === 'merging') {
-        const nodeData = diagramData.allNodes.find(n => n.id === fn.id);
-        if (nodeData) return { start: nodeData.start, end: nodeData.end };
-      }
-    }
-    return null;
-  }, [diagramData, diagramFrame, isMerge]);
 
   const started = playing || currentStep > 0;
 
@@ -407,42 +378,6 @@ export default function SortingVisualizer({ algorithm }: Props) {
         </span>
       </div>
 
-      {isMerge && diagramData && (
-        <>
-          <MergeSortDiagram
-            array={array}
-            currentStep={currentStep}
-            totalSteps={diagramData.frames.length}
-            step={step}
-          />
-          {activeSubarray && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '4px',
-                marginTop: '0.5rem',
-                marginBottom: '0.5rem',
-                padding: '0.25rem 0',
-              }}
-            >
-              {array.map((_, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    width: '48px',
-                    height: '4px',
-                    borderRadius: '2px',
-                    background: (idx >= activeSubarray.start && idx < activeSubarray.end)
-                      ? '#3b82f6' : 'var(--border)',
-                    transition: 'background 0.2s',
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
       {algorithm === 'heap' && (
         <div style={{ marginBottom: '1rem' }}>
           <HeapSortDiagram
@@ -494,9 +429,8 @@ export default function SortingVisualizer({ algorithm }: Props) {
             const color = step ? getCellColor(idx, step) : CELL_COLORS.default;
             const isSwapping = step?.swapping.includes(idx);
             const isComparing = step?.comparing.includes(idx);
-            const isInSubarray = activeSubarray && idx >= activeSubarray.start && idx < activeSubarray.end;
             const isInStepSubarray = step?.subarray && idx >= step.subarray.start && idx < step.subarray.end;
-            const isHighlighted = isInSubarray || isInStepSubarray;
+            const isHighlighted = isInStepSubarray;
 
             const sortedSet = new Set(step?.sorted ?? []);
             const isSorted = sortedSet.has(idx);

@@ -1,4 +1,4 @@
-export type AlgorithmType = 'bubble' | 'selection' | 'insertion' | 'merge' | 'quick' | 'heap';
+export type AlgorithmType = 'bubble' | 'selection' | 'insertion' | 'quick' | 'heap';
 export type GraphAlgorithmType = 'bfs' | 'dfs' | 'dijkstra';
 export type GraphGenerationType = 'random' | 'grid' | 'tree' | 'complete' | 'disconnected';
 export type ComplexityCase = 'best' | 'average' | 'worst';

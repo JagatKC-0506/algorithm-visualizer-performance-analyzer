@@ -39,7 +39,7 @@ export default function HomePage() {
               Sorting Algorithm Visualizer
             </h2>
             <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Visualize Bubble, Selection, Insertion, Merge, Quick, and Heap Sort with real-time animation, performance metrics, and complexity analysis.
+              Visualize Bubble, Selection, Insertion, Quick, and Heap Sort with real-time animation, performance metrics, and complexity analysis.
             </p>
           </div>
           <div

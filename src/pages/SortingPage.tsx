@@ -10,7 +10,7 @@ import SortingVisualizer from '../components/sorting/SortingVisualizer';
 import PerformanceGraph from '../components/sorting/PerformanceGraph';
 import AlgorithmComparison from '../components/sorting/AlgorithmComparison';
 
-const ALGORITHM_KEYS: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'merge', 'quick', 'heap'];
+const ALGORITHM_KEYS: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'quick', 'heap'];
 
 export default function SortingPage() {
   const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmType>('bubble');

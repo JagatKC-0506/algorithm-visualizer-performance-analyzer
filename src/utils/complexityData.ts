@@ -14,7 +14,6 @@ export function getComplexityCurves(
     bubble: { best: 'n', average: 'n²', worst: 'n²' },
     selection: { best: 'n²', average: 'n²', worst: 'n²' },
     insertion: { best: 'n', average: 'n²', worst: 'n²' },
-    merge: { best: 'n log n', average: 'n log n', worst: 'n log n' },
     quick: { best: 'n log n', average: 'n log n', worst: 'n²' },
     heap: { best: 'n log n', average: 'n log n', worst: 'n log n' },
     bfs: { best: 'n', average: 'n', worst: 'n' },

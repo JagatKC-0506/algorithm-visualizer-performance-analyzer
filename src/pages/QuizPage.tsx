@@ -8,7 +8,7 @@ import Button from '../components/common/Button';
 
 type Category = 'sorting' | 'graph';
 
-const SORTING_KEYS: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'merge', 'quick', 'heap'];
+const SORTING_KEYS: AlgorithmType[] = ['bubble', 'selection', 'insertion', 'quick', 'heap'];
 const GRAPH_KEYS: GraphAlgorithmType[] = ['bfs', 'dfs', 'dijkstra'];
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -197,7 +197,7 @@ export default function QuizPage() {
           >
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>{'\uD83D\uDCCA'}</div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Sorting Algorithms</h2>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Bubble Sort, Merge Sort, Quick Sort and more</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Bubble Sort, Insertion Sort, Quick Sort and more</p>
           </div>
           <div
             role="button"
