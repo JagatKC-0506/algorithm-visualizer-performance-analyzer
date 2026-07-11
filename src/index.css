@@ -188,11 +188,6 @@ input[type='number'] {
   100% { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes linePulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-
 .step-table-row:hover {
   background: var(--accent-alpha);
 }

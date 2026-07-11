@@ -1,14 +1,5 @@
 import type { GraphData, GraphStep } from '../../types';
 
-const PSEUDOCODE = [
-  'push(start)',
-  'while stack not empty',
-  '  node = pop()',
-  '  if node not visited',
-  '    mark visited',
-  '    push neighbours',
-];
-
 export function dfsSteps(graph: GraphData, start: number, destination?: number): GraphStep[] {
   const steps: GraphStep[] = [];
   const visited = new Set<number>();

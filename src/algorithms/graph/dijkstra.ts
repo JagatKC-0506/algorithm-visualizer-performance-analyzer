@@ -1,14 +1,5 @@
 import type { GraphData, GraphStep, RelaxationInfo } from '../../types';
 
-const PSEUDOCODE = [
-  'dist[start] = 0',
-  'push(start)',
-  'while priority queue not empty',
-  '  u = extractMin()',
-  '  for each neighbour v',
-  '    relax(u, v)',
-];
-
 interface PQEntry {
   node: number;
   dist: number;

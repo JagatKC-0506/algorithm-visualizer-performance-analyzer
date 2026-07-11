@@ -140,8 +140,3 @@ export interface QuizQuestion {
   explanation: string;
 }
 
-export interface SortResult {
-  algorithm: AlgorithmType;
-  metrics: SortMetrics;
-  sortedArray: number[];
-}

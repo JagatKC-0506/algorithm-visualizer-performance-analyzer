@@ -26,20 +26,4 @@ export function generateSortedArray(size: number, min = 5, max = 100): number[] 
   return generateRandomArray(size, min, max).sort((a, b) => a - b);
 }
 
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
-export function measureExecutionTime<T>(fn: () => T): { result: T; time: number } {
-  const start = performance.now();
-  const result = fn();
-  const end = performance.now();
-  return { result, time: end - start };
-}
-
-export function formatTime(ms: number): string {
-  if (ms < 0.001) return `${(ms * 1000000).toFixed(2)} ns`;
-  if (ms < 1) return `${(ms * 1000).toFixed(2)} µs`;
-  if (ms < 1000) return `${ms.toFixed(2)} ms`;
-  return `${(ms / 1000).toFixed(4)} s`;
-}

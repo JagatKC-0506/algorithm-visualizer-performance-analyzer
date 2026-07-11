@@ -1,14 +1,5 @@
 import type { GraphData, GraphStep } from '../../types';
 
-const PSEUDOCODE = [
-  'enqueue(start)',
-  'mark start visited',
-  'while queue not empty',
-  '  node = dequeue()',
-  '  for each neighbour',
-  '    enqueue(neighbour)',
-];
-
 export function bfsSteps(graph: GraphData, start: number, destination?: number): GraphStep[] {
   const steps: GraphStep[] = [];
   const visited = new Set<number>();
